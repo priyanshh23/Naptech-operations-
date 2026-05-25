@@ -1,0 +1,167 @@
+import type {
+  DashboardSummary,
+  InventoryItem,
+  InventoryLog,
+  Notification,
+  ProductionTask,
+} from "@/lib/types";
+
+export const inventoryItems: InventoryItem[] = [
+  {
+    id: 1,
+    product_name: "Brake Pad Set",
+    sku_code: "BRK-PAD-001",
+    quantity: 42,
+    minimum_stock: 20,
+    location: "Rack A1",
+    created_at: "2026-05-20T09:00:00Z",
+    updated_at: "2026-05-25T11:30:00Z",
+    is_low_stock: false,
+  },
+  {
+    id: 2,
+    product_name: "Clutch Cable",
+    sku_code: "CLT-CAB-021",
+    quantity: 9,
+    minimum_stock: 15,
+    location: "Rack B4",
+    created_at: "2026-05-18T09:00:00Z",
+    updated_at: "2026-05-25T10:00:00Z",
+    is_low_stock: true,
+  },
+  {
+    id: 3,
+    product_name: "Gear Housing",
+    sku_code: "GR-HSG-110",
+    quantity: 18,
+    minimum_stock: 12,
+    location: "Bin C2",
+    created_at: "2026-05-17T09:00:00Z",
+    updated_at: "2026-05-25T08:20:00Z",
+    is_low_stock: false,
+  },
+  {
+    id: 4,
+    product_name: "Fastener Kit",
+    sku_code: "FST-KIT-080",
+    quantity: 6,
+    minimum_stock: 25,
+    location: "Rack D1",
+    created_at: "2026-05-15T09:00:00Z",
+    updated_at: "2026-05-25T07:45:00Z",
+    is_low_stock: true,
+  },
+];
+
+export const inventoryLogs: InventoryLog[] = [
+  {
+    id: 1,
+    inventory_id: 2,
+    action_type: "removed",
+    quantity_changed: -8,
+    updated_by: 1,
+    timestamp: "2026-05-25T10:00:00Z",
+  },
+  {
+    id: 2,
+    inventory_id: 1,
+    action_type: "added",
+    quantity_changed: 12,
+    updated_by: 2,
+    timestamp: "2026-05-25T09:30:00Z",
+  },
+  {
+    id: 3,
+    inventory_id: 4,
+    action_type: "removed",
+    quantity_changed: -16,
+    updated_by: 1,
+    timestamp: "2026-05-24T16:10:00Z",
+  },
+];
+
+export const productionTasks: ProductionTask[] = [
+  {
+    id: 1,
+    task_name: "Assemble brake sub-unit",
+    assigned_worker: "Ravi Kumar",
+    status: "in_progress",
+    priority: "high",
+    start_time: "2026-05-25T09:00:00Z",
+    end_time: null,
+    remarks: "Line 2 batch",
+    created_at: "2026-05-25T08:30:00Z",
+  },
+  {
+    id: 2,
+    task_name: "Inspect gear housings",
+    assigned_worker: "Neha Singh",
+    status: "delayed",
+    priority: "urgent",
+    start_time: "2026-05-25T08:00:00Z",
+    end_time: null,
+    remarks: "Waiting for gauge calibration",
+    created_at: "2026-05-25T07:45:00Z",
+  },
+  {
+    id: 3,
+    task_name: "Pack clutch cable kits",
+    assigned_worker: "Aman Verma",
+    status: "completed",
+    priority: "medium",
+    start_time: "2026-05-24T14:00:00Z",
+    end_time: "2026-05-24T17:10:00Z",
+    remarks: "Ready for dispatch",
+    created_at: "2026-05-24T13:40:00Z",
+  },
+  {
+    id: 4,
+    task_name: "Prepare fastener bins",
+    assigned_worker: "Iqbal Khan",
+    status: "pending",
+    priority: "medium",
+    start_time: null,
+    end_time: null,
+    remarks: "Start after stock refill",
+    created_at: "2026-05-25T11:00:00Z",
+  },
+];
+
+export const notifications: Notification[] = [
+  {
+    id: 1,
+    message: "Fastener Kit is below minimum stock.",
+    type: "low_stock",
+    is_read: false,
+    created_at: "2026-05-25T11:20:00Z",
+  },
+  {
+    id: 2,
+    message: "Inspect gear housings is delayed.",
+    type: "production_delay",
+    is_read: false,
+    created_at: "2026-05-25T10:40:00Z",
+  },
+  {
+    id: 3,
+    message: "Pack clutch cable kits marked completed.",
+    type: "task_update",
+    is_read: true,
+    created_at: "2026-05-24T17:15:00Z",
+  },
+];
+
+export const dashboardSummary: DashboardSummary = {
+  total_inventory: inventoryItems.reduce((sum, item) => sum + item.quantity, 0),
+  low_stock_count: inventoryItems.filter((item) => item.is_low_stock).length,
+  active_tasks: productionTasks.filter((task) => task.status === "in_progress").length,
+  delayed_tasks: productionTasks.filter((task) => task.status === "delayed").length,
+  completed_tasks: productionTasks.filter((task) => task.status === "completed").length,
+  production_summary: {
+    pending: productionTasks.filter((task) => task.status === "pending").length,
+    in_progress: productionTasks.filter((task) => task.status === "in_progress").length,
+    delayed: productionTasks.filter((task) => task.status === "delayed").length,
+    completed: productionTasks.filter((task) => task.status === "completed").length,
+  },
+};
+
