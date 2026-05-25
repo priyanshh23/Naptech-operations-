@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from app.database.session import get_db
 from app.middleware.auth import get_current_user, require_roles
@@ -18,7 +19,7 @@ router = APIRouter(prefix="/inventory", tags=["inventory"])
 
 @router.get("", response_model=list[InventoryResponse])
 def get_inventory(
-    search: str | None = Query(default=None),
+    search: Optional[str] = Query(default=None),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list:
@@ -66,4 +67,3 @@ def get_inventory_logs(
     _: User = Depends(require_roles(UserRole.ADMIN, UserRole.SUPERVISOR)),
 ) -> list:
     return list_inventory_logs(db)
-

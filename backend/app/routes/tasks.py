@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from app.database.session import get_db
 from app.middleware.auth import get_current_user, require_roles
@@ -13,7 +14,7 @@ router = APIRouter(prefix="/tasks", tags=["production tasks"])
 
 @router.get("", response_model=list[ProductionTaskResponse])
 def get_tasks(
-    status_filter: TaskStatus | None = None,
+    status_filter: Optional[TaskStatus] = None,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list:
@@ -46,4 +47,3 @@ def complete_production_task(
     _: User = Depends(require_roles(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.WORKER)),
 ):
     return complete_task(db, task_id)
-

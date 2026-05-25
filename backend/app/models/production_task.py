@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+from typing import Optional
 
 from sqlalchemy import DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -29,8 +30,7 @@ class ProductionTask(Base):
     assigned_worker: Mapped[str] = mapped_column(String(120), index=True, nullable=False)
     status: Mapped[TaskStatus] = mapped_column(String(32), nullable=False, default=TaskStatus.PENDING.value)
     priority: Mapped[TaskPriority] = mapped_column(String(32), nullable=False, default=TaskPriority.MEDIUM.value)
-    start_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    end_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
+    start_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    end_time: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    remarks: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-

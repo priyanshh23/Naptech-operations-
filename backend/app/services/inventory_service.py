@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from app.models.inventory import Inventory
 from app.models.inventory_log import InventoryActionType, InventoryLog
@@ -8,7 +9,7 @@ from app.models.user import User
 from app.schemas.inventory import InventoryCreate, InventoryUpdate
 
 
-def list_inventory(db: Session, search: str | None = None) -> list[Inventory]:
+def list_inventory(db: Session, search: Optional[str] = None) -> list[Inventory]:
     statement = select(Inventory).order_by(Inventory.product_name)
     if search:
         search_pattern = f"%{search}%"
@@ -85,4 +86,3 @@ def delete_inventory_item(db: Session, inventory_id: int, user: User) -> None:
 
 def list_inventory_logs(db: Session) -> list[InventoryLog]:
     return list(db.scalars(select(InventoryLog).order_by(InventoryLog.timestamp.desc())).all())
-

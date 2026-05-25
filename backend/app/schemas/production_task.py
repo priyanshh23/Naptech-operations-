@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -10,9 +11,9 @@ class ProductionTaskBase(BaseModel):
     assigned_worker: str = Field(min_length=1, max_length=120)
     status: TaskStatus = TaskStatus.PENDING
     priority: TaskPriority = TaskPriority.MEDIUM
-    start_time: datetime | None = None
-    end_time: datetime | None = None
-    remarks: str | None = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    remarks: Optional[str] = None
 
 
 class ProductionTaskCreate(ProductionTaskBase):
@@ -20,13 +21,13 @@ class ProductionTaskCreate(ProductionTaskBase):
 
 
 class ProductionTaskUpdate(BaseModel):
-    task_name: str | None = Field(default=None, min_length=1, max_length=180)
-    assigned_worker: str | None = Field(default=None, min_length=1, max_length=120)
-    status: TaskStatus | None = None
-    priority: TaskPriority | None = None
-    start_time: datetime | None = None
-    end_time: datetime | None = None
-    remarks: str | None = None
+    task_name: Optional[str] = Field(default=None, min_length=1, max_length=180)
+    assigned_worker: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    status: Optional[TaskStatus] = None
+    priority: Optional[TaskPriority] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    remarks: Optional[str] = None
 
 
 class ProductionTaskResponse(ProductionTaskBase):
@@ -34,4 +35,3 @@ class ProductionTaskResponse(ProductionTaskBase):
     created_at: datetime
 
     model_config = {"from_attributes": True}
-

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -18,11 +19,11 @@ class InventoryCreate(InventoryBase):
 
 
 class InventoryUpdate(BaseModel):
-    product_name: str | None = Field(default=None, min_length=1, max_length=180)
-    sku_code: str | None = Field(default=None, min_length=1, max_length=80)
-    quantity: int | None = Field(default=None, ge=0)
-    minimum_stock: int | None = Field(default=None, ge=0)
-    location: str | None = Field(default=None, min_length=1, max_length=120)
+    product_name: Optional[str] = Field(default=None, min_length=1, max_length=180)
+    sku_code: Optional[str] = Field(default=None, min_length=1, max_length=80)
+    quantity: Optional[int] = Field(default=None, ge=0)
+    minimum_stock: Optional[int] = Field(default=None, ge=0)
+    location: Optional[str] = Field(default=None, min_length=1, max_length=120)
 
 
 class InventoryResponse(InventoryBase):
@@ -36,11 +37,10 @@ class InventoryResponse(InventoryBase):
 
 class InventoryLogResponse(BaseModel):
     id: int
-    inventory_id: int | None
+    inventory_id: Optional[int]
     action_type: InventoryActionType
     quantity_changed: int
-    updated_by: int | None
+    updated_by: Optional[int]
     timestamp: datetime
 
     model_config = {"from_attributes": True}
-

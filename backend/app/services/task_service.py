@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -8,7 +9,7 @@ from app.models.production_task import ProductionTask, TaskStatus
 from app.schemas.production_task import ProductionTaskCreate, ProductionTaskUpdate
 
 
-def list_tasks(db: Session, status_filter: TaskStatus | None = None) -> list[ProductionTask]:
+def list_tasks(db: Session, status_filter: Optional[TaskStatus] = None) -> list[ProductionTask]:
     statement = select(ProductionTask).order_by(ProductionTask.created_at.desc())
     if status_filter:
         statement = statement.where(ProductionTask.status == status_filter)
@@ -46,4 +47,3 @@ def complete_task(db: Session, task_id: int) -> ProductionTask:
     db.commit()
     db.refresh(task)
     return task
-
