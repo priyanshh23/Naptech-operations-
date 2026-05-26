@@ -90,18 +90,18 @@ export function DashboardShell({ children }: Readonly<{ children: ReactNode }>) 
     <div className="min-h-screen bg-[#F7F9FB] text-[#111827]">
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-[292px] flex-col border-r border-white/10 bg-[#020B14] text-white transition-transform duration-300 lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex w-[236px] flex-col border-r border-white/10 bg-[#020B14] text-white transition-transform duration-300 lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex h-24 items-center justify-between px-5">
-          <Link className="flex items-center gap-3" href="/dashboard">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl border border-[#8BFF4D]/60 bg-[#19C93B]/15 text-[#8BFF4D] shadow-[0_0_30px_rgba(25,201,59,0.28)]">
-              <span className="text-lg font-black italic">NP</span>
+        <div className="flex h-[76px] items-center justify-between px-4">
+          <Link className="flex items-center gap-2.5" href="/dashboard">
+            <div className="grid h-10 w-10 place-items-center rounded-xl border border-[#8BFF4D]/60 bg-[#19C93B]/15 text-[#8BFF4D] shadow-[0_0_22px_rgba(25,201,59,0.22)]">
+              <span className="text-base font-black italic">NP</span>
             </div>
             <div>
-              <p className="text-2xl font-semibold tracking-normal text-[#19C93B]">NAPTECH</p>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white">Factory OS</p>
+              <p className="text-lg font-semibold tracking-normal text-[#19C93B]">NAPTECH</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white">Factory OS</p>
             </div>
           </Link>
           <button className="rounded-full border border-white/20 p-2 text-slate-400 lg:hidden" onClick={() => setOpen(false)} type="button">
@@ -109,35 +109,35 @@ export function DashboardShell({ children }: Readonly<{ children: ReactNode }>) 
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-4 pb-4">
+        <nav className="flex-1 overflow-y-auto px-3 pb-3">
           <NavLink active={pathname === "/dashboard"} href="/dashboard" icon={Home} label="Dashboard" onClick={() => setOpen(false)} />
           <NavGroup items={operations} label="Operations" pathname={pathname} setOpen={setOpen} />
           <NavGroup items={management} label="Management" pathname={pathname} setOpen={setOpen} />
           <NavGroup items={system} label="System" pathname={pathname} setOpen={setOpen} />
         </nav>
 
-        <div className="m-4 rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="flex items-center gap-3">
-            <div className="relative grid h-11 w-11 place-items-center rounded-full bg-[#19C93B] text-sm font-bold text-white">
+        <div className="m-3 rounded-xl border border-white/10 bg-white/5 p-3">
+          <div className="flex items-center gap-2.5">
+            <div className="relative grid h-9 w-9 place-items-center rounded-full bg-[#19C93B] text-xs font-bold text-white">
               A
-              <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#020B14] bg-[#8BFF4D]" />
+              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#020B14] bg-[#8BFF4D]" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-white">Admin User</p>
-              <p className="text-xs text-slate-400">Super Admin</p>
+              <p className="text-sm font-semibold text-white">Admin User</p>
+              <p className="text-[11px] text-slate-400">Super Admin</p>
             </div>
             <button onClick={logout} type="button">
               <ChevronDown size={16} />
             </button>
           </div>
-          <div className="mt-8 flex items-center justify-between text-xs text-slate-500">
+          <div className="mt-5 flex items-center justify-between text-[11px] text-slate-500">
             <span>© 2026 Naptech</span>
             <span>v1.0.0</span>
           </div>
         </div>
       </aside>
 
-      <div className="lg:pl-[292px]">
+      <div className="lg:pl-[236px]">
         <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 px-4 py-4 backdrop-blur-xl lg:px-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -220,9 +220,9 @@ function NavGroup({
   setOpen: (open: boolean) => void;
 }>) {
   return (
-    <div className="mt-7">
-      <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <div className="space-y-1">
+    <div className="mt-5">
+      <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <div className="space-y-0.5">
         {items.map((item) => (
           <NavLink
             active={pathname === item.href && item.label !== "Work Orders" && item.label !== "Quality" && item.label !== "Maintenance"}
@@ -257,17 +257,17 @@ function NavLink({
   return (
     <Link
       className={cn(
-        "group flex items-center justify-between rounded-xl px-3 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white",
-        active && "bg-[#19C93B] text-white shadow-[0_0_24px_rgba(25,201,59,0.32)]",
+        "group flex items-center justify-between rounded-xl px-3 py-2.5 text-[13px] font-medium text-slate-300 transition hover:bg-white/5 hover:text-white",
+        active && "bg-[#19C93B] text-white shadow-[0_0_18px_rgba(25,201,59,0.24)]",
       )}
       href={href}
       onClick={onClick}
     >
-      <span className="flex items-center gap-3">
-        <Icon size={19} />
+      <span className="flex items-center gap-2.5">
+        <Icon size={16} />
         {label}
       </span>
-      {count ? <span className="grid h-7 w-7 place-items-center rounded-full bg-[#19C93B] text-xs font-bold text-white">{count}</span> : <ChevronDown className="rotate-[-90deg] text-slate-500" size={15} />}
+      {count ? <span className="grid h-6 w-6 place-items-center rounded-full bg-[#19C93B] text-[11px] font-bold text-white">{count}</span> : <ChevronDown className="rotate-[-90deg] text-slate-500" size={13} />}
     </Link>
   );
 }
