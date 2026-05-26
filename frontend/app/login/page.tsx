@@ -1,15 +1,40 @@
+"use client";
+
 import { ArrowRight, Boxes, Factory, Gauge, Lock, Mail, ShieldCheck, Sparkles } from "lucide-react";
-import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useState, type FormEvent, type ReactNode } from "react";
 
 import { Button, Card } from "@/components/ui";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setIsLoading(true);
+
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get("email"));
+    const password = String(formData.get("password"));
+
+    if (email !== "supervisor@naptech.in" || password !== "password") {
+      setIsLoading(false);
+      setError("Use supervisor@naptech.in and password for this demo.");
+      return;
+    }
+
+    window.localStorage.setItem("naptech_demo_session", "supervisor");
+    router.push("/dashboard");
+  }
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f8fbff] text-slate-950">
       <div className="login-grid" />
       <div className="login-aurora login-aurora-one" />
       <div className="login-aurora login-aurora-two" />
-      <div className="login-aurora login-aurora-three" />
 
       <section className="relative z-10 grid min-h-screen items-center gap-10 px-5 py-8 lg:grid-cols-[1.1fr_0.9fr] lg:px-12 xl:px-20">
         <div className="mx-auto w-full max-w-3xl">
@@ -49,9 +74,9 @@ export default function LoginPage() {
         </div>
 
         <div className="mx-auto w-full max-w-md">
-          <Card className="relative overflow-hidden border-white/80 bg-white/80 p-6 shadow-[0_30px_90px_rgba(14,23,38,0.16)] backdrop-blur-xl">
-            <div className="absolute -right-24 -top-24 h-48 w-48 rounded-full bg-cyan-200/60 blur-3xl" />
-            <div className="absolute -bottom-28 -left-24 h-56 w-56 rounded-full bg-fuchsia-200/50 blur-3xl" />
+          <Card className="relative overflow-hidden border-white/80 bg-white/90 p-6 shadow-[0_24px_70px_rgba(14,23,38,0.14)]">
+            <div className="absolute -right-20 -top-20 h-44 w-44 rounded-full bg-cyan-100" />
+            <div className="absolute -bottom-24 -left-20 h-52 w-52 rounded-full bg-fuchsia-100" />
 
             <div className="relative">
               <div className="mb-8 flex items-center justify-between">
@@ -69,7 +94,7 @@ export default function LoginPage() {
                 </span>
               </div>
 
-              <form className="space-y-4">
+              <form className="space-y-4" onSubmit={handleSubmit}>
                 <label className="block">
                   <span className="mb-2 block text-sm font-semibold text-slate-800">Email</span>
                   <span className="flex h-12 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 shadow-sm transition focus-within:border-cyan-400 focus-within:ring-4 focus-within:ring-cyan-100">
@@ -78,6 +103,7 @@ export default function LoginPage() {
                       className="w-full bg-transparent text-sm outline-none"
                       defaultValue="supervisor@naptech.in"
                       name="email"
+                      autoComplete="email"
                       type="email"
                     />
                   </span>
@@ -91,6 +117,7 @@ export default function LoginPage() {
                       className="w-full bg-transparent text-sm outline-none"
                       defaultValue="password"
                       name="password"
+                      autoComplete="current-password"
                       type="password"
                     />
                   </span>
@@ -106,8 +133,14 @@ export default function LoginPage() {
                   </a>
                 </div>
 
-                <Button className="group h-12 w-full rounded-lg text-base" type="submit">
-                  Login
+                {error ? (
+                  <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                    {error}
+                  </p>
+                ) : null}
+
+                <Button className="group h-12 w-full rounded-lg text-base" disabled={isLoading} type="submit">
+                  {isLoading ? "Opening dashboard..." : "Login"}
                   <ArrowRight className="transition group-hover:translate-x-1" size={18} />
                 </Button>
               </form>
