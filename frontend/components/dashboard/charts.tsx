@@ -97,7 +97,7 @@ export function ProductionOverview({ data }: Readonly<{ data: ProductionPoint[] 
 function PanelTitle({ href, title }: Readonly<{ href: string; title: string }>) {
   return (
     <div className="flex items-center justify-between">
-      <h2 className="text-xl font-semibold tracking-normal text-[#111827]">{title}</h2>
+      <h2 className="text-lg font-semibold tracking-normal text-[#111827] dark-dashboard:text-white">{title}</h2>
       <Link className="text-sm font-semibold text-[#19C93B]" href={href}>
         View all
       </Link>

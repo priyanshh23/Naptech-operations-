@@ -11,10 +11,12 @@ import {
   Home,
   LayoutDashboard,
   Menu,
+  Moon,
   PackageCheck,
   Search,
   Settings,
   Shield,
+  Sun,
   Users,
   Wrench,
   X,
@@ -24,7 +26,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -54,6 +56,11 @@ export function DashboardShell({ children }: Readonly<{ children: ReactNode }>) 
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [date, setDate] = useState("2026-05-26");
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark-dashboard", darkMode);
+  }, [darkMode]);
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -88,7 +95,7 @@ export function DashboardShell({ children }: Readonly<{ children: ReactNode }>) 
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F9FB] text-[#111827]">
+    <div className="min-h-screen bg-[#F7F9FB] text-[#111827] transition-colors dark-dashboard:bg-[#07111A] dark-dashboard:text-slate-100">
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 flex w-[236px] flex-col border-r border-white/10 bg-[#020B14] text-white transition-transform duration-300 lg:translate-x-0",
@@ -133,7 +140,7 @@ export function DashboardShell({ children }: Readonly<{ children: ReactNode }>) 
       </aside>
 
       <div className="lg:pl-[236px]">
-        <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 px-4 py-4 backdrop-blur-xl lg:px-8">
+        <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 px-4 py-3 backdrop-blur-xl transition-colors dark-dashboard:border-white/10 dark-dashboard:bg-[#07111A]/90 lg:px-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <button
@@ -143,40 +150,44 @@ export function DashboardShell({ children }: Readonly<{ children: ReactNode }>) 
               >
                 <Menu size={20} />
               </button>
-              <form className="hidden h-12 w-[360px] items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 shadow-sm md:flex" onSubmit={handleSearch}>
+              <form className="hidden h-11 w-[340px] items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 shadow-sm transition-colors dark-dashboard:border-white/10 dark-dashboard:bg-white/5 md:flex" onSubmit={handleSearch}>
                 <Search size={18} className="text-slate-500" />
-                <input className="w-full bg-transparent text-sm outline-none" name="query" placeholder="Search anything..." />
+                <input className="w-full bg-transparent text-sm outline-none dark-dashboard:text-white" name="query" placeholder="Search anything..." />
                 <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500">⌘K</span>
               </form>
             </div>
 
             <div className="flex items-center gap-3">
-              <button className="grid h-10 w-10 place-items-center rounded-xl text-slate-700 transition hover:bg-slate-100" type="button">
-                ☼
+              <button
+                aria-label="Toggle dark theme"
+                className="grid h-10 w-10 place-items-center rounded-xl text-slate-700 transition hover:bg-slate-100 dark-dashboard:text-slate-200 dark-dashboard:hover:bg-white/10"
+                onClick={() => setDarkMode((value) => !value)}
+                type="button"
+              >
+                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
               </button>
               <Link className="relative grid h-10 w-10 place-items-center rounded-xl text-slate-700 transition hover:bg-slate-100" href="/notifications">
                 <Bell size={18} />
                 <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-[#19C93B] text-[10px] font-bold text-white">5</span>
               </Link>
-              <Image alt="Naptech" className="h-10 w-10 rounded-xl object-contain" height={40} src="/logo.png" width={40} />
-              <button className="flex items-center gap-2 text-sm font-semibold text-[#087B25]" onClick={() => setProfileOpen((value) => !value)} type="button">
-                NAPTECH
+              <button className="flex items-center gap-2 text-sm font-semibold text-[#087B25] dark-dashboard:text-[#8BFF4D]" onClick={() => setProfileOpen((value) => !value)} type="button">
+                Admin
                 <ChevronDown size={16} />
               </button>
             </div>
           </div>
 
-          <div className="mt-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="mt-4 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
-              <h1 className="text-3xl font-semibold tracking-normal text-[#111827]">Welcome back, Admin! 👋</h1>
-              <p className="mt-1 text-sm text-[#6B7280]">Here&apos;s what&apos;s happening in your factory today.</p>
+              <h1 className="text-2xl font-semibold tracking-normal text-[#111827] dark-dashboard:text-white">Welcome back, Admin! 👋</h1>
+              <p className="mt-1 text-sm text-[#6B7280] dark-dashboard:text-slate-400">Here&apos;s what&apos;s happening in your factory today.</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <label className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm">
+              <label className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm dark-dashboard:border-white/10 dark-dashboard:bg-white/5 dark-dashboard:text-slate-200">
                 <CalendarDays size={17} />
                 <input className="bg-transparent outline-none" onChange={(event) => setDate(event.target.value)} type="date" value={date} />
               </label>
-              <button className="flex h-11 items-center gap-2 rounded-xl bg-[#19C93B] px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(25,201,59,0.25)] transition hover:-translate-y-0.5" onClick={exportReport} type="button">
+              <button className="flex h-10 items-center gap-2 rounded-xl bg-[#19C93B] px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(25,201,59,0.25)] transition hover:-translate-y-0.5" onClick={exportReport} type="button">
                 <Download size={17} />
                 Export Report
               </button>
@@ -195,7 +206,7 @@ export function DashboardShell({ children }: Readonly<{ children: ReactNode }>) 
           ) : null}
         </header>
 
-        <main className="p-4 lg:p-8">{children}</main>
+        <main className="p-4 lg:p-6">{children}</main>
       </div>
     </div>
   );

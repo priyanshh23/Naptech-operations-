@@ -17,7 +17,7 @@ export function AlertsPanel({ alerts }: Readonly<{ alerts: AlertItem[] }>) {
       <div className="mb-5 flex items-center justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#19C93B]">Alerts</p>
-          <h2 className="mt-1 text-xl font-semibold text-[#111827]">Recent Alerts</h2>
+          <h2 className="mt-1 text-lg font-semibold text-[#111827] dark-dashboard:text-white">Recent Alerts</h2>
         </div>
         <Link className="text-sm font-semibold text-[#19C93B]" href="/notifications">View all</Link>
       </div>
@@ -34,7 +34,7 @@ export function AlertsPanel({ alerts }: Readonly<{ alerts: AlertItem[] }>) {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="font-semibold text-[#111827]">{alert.title}</p>
+                  <p className="text-sm font-semibold text-[#111827] dark-dashboard:text-white">{alert.title}</p>
                     <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", meta.dot)} />
                   </div>
                   <p className="mt-1 text-sm leading-6 text-[#6B7280]">{alert.description}</p>

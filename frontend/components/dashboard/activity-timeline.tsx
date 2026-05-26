@@ -17,7 +17,7 @@ export function ActivityTimeline({ items }: Readonly<{ items: RecentActivity[] }
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#19C93B]">Timeline</p>
-          <h2 className="mt-1 text-xl font-semibold text-[#111827]">Recent Activity</h2>
+          <h2 className="mt-1 text-lg font-semibold text-[#111827] dark-dashboard:text-white">Recent Activity</h2>
         </div>
         <Link className="text-sm font-semibold text-[#19C93B]" href="/notifications">View all</Link>
       </div>

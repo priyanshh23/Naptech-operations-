@@ -15,7 +15,7 @@ export function ProductionOutputWidget({
   return (
     <DashboardCard delay={0.32}>
       <div className="flex items-center justify-between">
-        <h2 className="mt-1 text-xl font-semibold text-[#111827]">Production Target</h2>
+        <h2 className="mt-1 text-lg font-semibold text-[#111827] dark-dashboard:text-white">Production Target</h2>
         <Link className="text-sm font-semibold text-[#19C93B]" href="/production">View all</Link>
       </div>
 
@@ -28,7 +28,7 @@ export function ProductionOutputWidget({
         >
           <div className="grid h-32 w-32 place-items-center rounded-full bg-white shadow-inner">
             <div className="text-center">
-              <p className="text-4xl font-semibold text-[#111827]">{percentage}%</p>
+              <p className="text-3xl font-semibold text-[#111827]">{percentage}%</p>
               <p className="text-xs font-semibold uppercase tracking-wide text-[#6B7280]">Complete</p>
             </div>
           </div>
