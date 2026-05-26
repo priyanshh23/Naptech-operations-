@@ -24,7 +24,7 @@ const navItems = [
 ];
 
 export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const [open, setOpen] = useState(false);
 
   return (

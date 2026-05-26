@@ -1,192 +1,89 @@
 "use client";
 
-import { AlertTriangle, Boxes, CheckCircle2, ClipboardList } from "lucide-react";
-import type { ReactNode } from "react";
+import { motion } from "framer-motion";
+
+import { ActivityTimeline } from "@/components/dashboard/activity-timeline";
+import { AlertsPanel } from "@/components/dashboard/alerts-panel";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { InventoryOverview, ProductionOverview } from "@/components/dashboard/charts";
+import { KpiCard } from "@/components/dashboard/kpi-card";
+import { ProductionOutputWidget } from "@/components/dashboard/output-widget";
+import { ActiveTasksTable, LowStockTable } from "@/components/dashboard/tables";
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-
-import { AppShell } from "@/components/app-shell";
-import { Badge, Card, PageHeader } from "@/components/ui";
-import { formatDateTime, titleCase } from "@/lib/format";
-import { dashboardSummary, inventoryItems, inventoryLogs, productionTasks } from "@/lib/mock-data";
-
-const statusColors = {
-  pending: "#64748b",
-  in_progress: "#0891b2",
-  delayed: "#dc2626",
-  completed: "#16a34a",
-};
+  activeTasks,
+  alerts,
+  inventoryCategories,
+  kpiMetrics,
+  lowStockItems,
+  outputProgress,
+  productionSeries,
+  recentActivities,
+} from "@/data/dashboard";
 
 export default function DashboardPage() {
-  const inventoryChart = inventoryItems.map((item) => ({
-    name: item.product_name,
-    stock: item.quantity,
-    minimum: item.minimum_stock,
-  }));
-
-  const productionChart = Object.entries(dashboardSummary.production_summary).map(([name, value]) => ({
-    name,
-    value,
-  }));
-
   return (
-    <AppShell>
-      <PageHeader
-        description="Live operational view for inventory health, production status, and shift-level movement."
-        title="Dashboard"
-      />
+    <DashboardShell>
+      <motion.section
+        animate={{ opacity: 1, y: 0 }}
+        className="relative mb-7 overflow-hidden rounded-[32px] bg-[#07111A] p-6 text-white shadow-[0_26px_80px_rgba(7,17,26,0.22)] md:p-8"
+        initial={{ opacity: 0, y: 16 }}
+        transition={{ duration: 0.45, ease: "easeOut" }}
+      >
+        <div className="absolute right-0 top-0 h-44 w-44 rounded-full bg-[#19C93B]/25 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-28 w-72 rounded-full bg-[#8BFF4D]/10 blur-3xl" />
+        <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#8BFF4D]">
+              NAPTECH Factory OS
+            </p>
+            <h2 className="mt-4 max-w-3xl text-4xl font-semibold leading-tight tracking-normal md:text-5xl">
+              Modern AI-ready operating layer for automobile manufacturing.
+            </h2>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
+              Track production, inventory, workers, alerts, and output performance from one premium industrial SaaS dashboard.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-3 rounded-3xl border border-white/10 bg-white/5 p-3 backdrop-blur">
+            <HeroStat label="Lines" value="08" />
+            <HeroStat label="OEE" value="86%" />
+            <HeroStat label="Uptime" value="99.2%" />
+          </div>
+        </div>
+      </motion.section>
 
-      <section className="metric-grid">
-        <MetricCard icon={<Boxes size={22} />} label="Total Inventory" value={dashboardSummary.total_inventory} />
-        <MetricCard
-          icon={<AlertTriangle size={22} />}
-          label="Low Stock Items"
-          tone="warning"
-          value={dashboardSummary.low_stock_count}
-        />
-        <MetricCard
-          icon={<ClipboardList size={22} />}
-          label="Active Tasks"
-          tone="info"
-          value={dashboardSummary.active_tasks}
-        />
-        <MetricCard
-          icon={<CheckCircle2 size={22} />}
-          label="Completed Tasks"
-          tone="success"
-          value={dashboardSummary.completed_tasks}
-        />
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {kpiMetrics.map((metric, index) => (
+          <KpiCard index={index} key={metric.label} metric={metric} />
+        ))}
       </section>
 
-      <section className="data-grid mt-6">
-        <Card>
-          <div className="mb-4">
-            <h2 className="text-base font-semibold text-slate-950">Inventory Overview</h2>
-            <p className="text-sm text-muted-foreground">Current quantity versus minimum stock.</p>
-          </div>
-          <div className="h-72">
-            <ResponsiveContainer height="100%" width="100%">
-              <BarChart data={inventoryChart}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="stock" fill="#0891b2" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="minimum" fill="#f59e0b" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="mb-4">
-            <h2 className="text-base font-semibold text-slate-950">Production Analytics</h2>
-            <p className="text-sm text-muted-foreground">Task distribution by current status.</p>
-          </div>
-          <div className="h-72">
-            <ResponsiveContainer height="100%" width="100%">
-              <PieChart>
-                <Pie data={productionChart} dataKey="value" innerRadius={58} outerRadius={96} paddingAngle={3}>
-                  {productionChart.map((entry) => (
-                    <Cell fill={statusColors[entry.name as keyof typeof statusColors]} key={entry.name} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value, name) => [value, titleCase(String(name))]} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {productionChart.map((item) => (
-              <div className="flex items-center gap-2 text-sm text-slate-700" key={item.name}>
-                <span
-                  className="h-2.5 w-2.5 rounded-full"
-                  style={{ background: statusColors[item.name as keyof typeof statusColors] }}
-                />
-                {titleCase(item.name)}: {item.value}
-              </div>
-            ))}
-          </div>
-        </Card>
+      <section className="mt-6 grid gap-6 lg:grid-cols-12">
+        <InventoryOverview data={inventoryCategories} />
+        <ProductionOverview data={productionSeries} />
       </section>
 
-      <section className="data-grid mt-6">
-        <Card>
-          <h2 className="mb-4 text-base font-semibold text-slate-950">Recent Stock Movement</h2>
-          <div className="space-y-3">
-            {inventoryLogs.slice(0, 4).map((log) => (
-              <div className="flex items-center justify-between border-b border-border pb-3" key={log.id}>
-                <div>
-                  <p className="text-sm font-medium text-slate-900">{titleCase(log.action_type)}</p>
-                  <p className="text-xs text-muted-foreground">{formatDateTime(log.timestamp)}</p>
-                </div>
-                <Badge tone={log.quantity_changed < 0 ? "danger" : "success"}>
-                  {log.quantity_changed > 0 ? "+" : ""}
-                  {log.quantity_changed}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card>
-          <h2 className="mb-4 text-base font-semibold text-slate-950">Active Production Tasks</h2>
-          <div className="space-y-3">
-            {productionTasks
-              .filter((task) => task.status !== "completed")
-              .slice(0, 4)
-              .map((task) => (
-                <div className="flex items-center justify-between border-b border-border pb-3" key={task.id}>
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{task.task_name}</p>
-                    <p className="text-xs text-muted-foreground">{task.assigned_worker}</p>
-                  </div>
-                  <Badge tone={task.status === "delayed" ? "danger" : "info"}>{titleCase(task.status)}</Badge>
-                </div>
-              ))}
-          </div>
-        </Card>
+      <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_380px]">
+        <AlertsPanel alerts={alerts} />
+        <ProductionOutputWidget {...outputProgress} />
       </section>
-    </AppShell>
+
+      <section className="mt-6 grid gap-6 lg:grid-cols-12">
+        <LowStockTable items={lowStockItems} />
+        <ActiveTasksTable tasks={activeTasks} />
+      </section>
+
+      <section className="mt-6 grid gap-6 lg:grid-cols-12">
+        <ActivityTimeline items={recentActivities} />
+      </section>
+    </DashboardShell>
   );
 }
 
-function MetricCard({
-  icon,
-  label,
-  value,
-  tone = "neutral",
-}: Readonly<{
-  icon: ReactNode;
-  label: string;
-  value: number;
-  tone?: "neutral" | "warning" | "success" | "info";
-}>) {
-  const toneClass = {
-    neutral: "bg-slate-100 text-slate-700",
-    warning: "bg-amber-50 text-amber-700",
-    success: "bg-emerald-50 text-emerald-700",
-    info: "bg-cyan-50 text-cyan-700",
-  }[tone];
-
+function HeroStat({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
-    <Card>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-2 text-3xl font-semibold text-slate-950">{value}</p>
-        </div>
-        <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${toneClass}`}>{icon}</div>
-      </div>
-    </Card>
+    <div className="min-w-20 rounded-2xl bg-white/8 px-4 py-3 text-center">
+      <p className="text-2xl font-semibold text-white">{value}</p>
+      <p className="mt-1 text-xs font-medium text-slate-400">{label}</p>
+    </div>
   );
 }
