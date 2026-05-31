@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, EmailStr
 
 from app.models.user import UserRole
@@ -14,7 +16,8 @@ class LoginRequest(BaseModel):
 
 
 class GoogleLoginRequest(BaseModel):
-    credential: str
+    credential: Optional[str] = None
+    access_token: Optional[str] = None
 
 
 class RegisterRequest(BaseModel):

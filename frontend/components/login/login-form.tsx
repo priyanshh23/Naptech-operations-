@@ -7,15 +7,30 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { Button, Card } from "@/components/ui";
-import { googleLogin, login } from "@/lib/api";
+import { getDashboardSummary, googleLogin, login } from "@/lib/api";
 
 import { LoginInput } from "./login-input";
 
 function GoogleMark() {
   return (
-    <span className="grid h-5 w-5 place-items-center">
-      <span className="h-4 w-4 rounded-full bg-[conic-gradient(from_210deg,#4285F4_0deg,#4285F4_90deg,#34A853_90deg,#34A853_180deg,#FBBC05_180deg,#FBBC05_270deg,#EA4335_270deg,#EA4335_360deg)]" />
-    </span>
+    <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24">
+      <path
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        fill="#34A853"
+      />
+      <path
+        d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.31 9.14 5.38 12 5.38z"
+        fill="#EA4335"
+      />
+    </svg>
   );
 }
 
@@ -27,9 +42,18 @@ export function LoginForm() {
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
-    if (window.localStorage.getItem("naptech_access_token")) {
-      router.replace("/dashboard");
-      return;
+    const existingToken = window.localStorage.getItem("naptech_access_token");
+    if (existingToken) {
+      void (async () => {
+        try {
+          await getDashboardSummary();
+          router.replace("/dashboard");
+        } catch {
+          window.localStorage.removeItem("naptech_access_token");
+          window.localStorage.removeItem("naptech_user");
+          window.localStorage.removeItem("naptech_demo_session");
+        }
+      })();
     }
 
     if (!googleClientId || document.getElementById("google-identity-script")) return;
@@ -71,6 +95,7 @@ export function LoginForm() {
       if (
         normalized.includes("backend server is unavailable") ||
         normalized.includes("failed to fetch") ||
+        normalized.includes("fetch failed") ||
         normalized.includes("networkerror") ||
         normalized.includes("load failed")
       ) {
@@ -79,6 +104,10 @@ export function LoginForm() {
       }
       if (normalized.includes("invalid email or password")) {
         setError("Use supervisor@naptech.in, inventory@naptech.in, production@naptech.in, or quality@naptech.in with password.");
+        return;
+      }
+      if (normalized.includes("access denied") || normalized.includes("approved company account")) {
+        setError("Access denied. Please sign in with an approved company email.");
         return;
       }
       setError(message);
@@ -95,40 +124,62 @@ export function LoginForm() {
     const google = (window as typeof window & {
       google?: {
         accounts?: {
-          id?: {
-            initialize: (options: { client_id: string; callback: (response: { credential?: string }) => void }) => void;
-            prompt: () => void;
+          oauth2?: {
+            initTokenClient: (options: {
+              client_id: string;
+              callback: (response: { access_token?: string; error?: string }) => void;
+              error_callback?: (error: { type?: string; message?: string }) => void;
+              prompt?: string;
+              scope: string;
+            }) => {
+              requestAccessToken: () => void;
+            };
           };
         };
       };
     }).google;
 
-    if (!google?.accounts?.id) {
+    if (!google?.accounts?.oauth2) {
       setError("Google login is still loading. Try again in a moment.");
       return;
     }
 
     setIsGoogleLoading(true);
-    google.accounts.id.initialize({
+    const tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: googleClientId,
+      scope: "openid email profile",
+      prompt: "select_account",
+      error_callback: (googleError) => {
+        setIsGoogleLoading(false);
+        setError(googleError.message || "Google sign-in popup was closed.");
+      },
       callback: (googleResponse) => {
         void (async () => {
           try {
-            if (!googleResponse.credential) {
-              throw new Error("Google did not return a credential.");
+            if (googleResponse.error) {
+              throw new Error(googleResponse.error);
             }
-            const response = await googleLogin(googleResponse.credential);
+            if (!googleResponse.access_token) {
+              throw new Error("Google did not return an access token.");
+            }
+            const response = await googleLogin(googleResponse.access_token, "access_token");
             storeSession(response);
             router.replace("/dashboard");
             router.refresh();
           } catch (error) {
             setIsGoogleLoading(false);
-            setError(error instanceof Error ? error.message : "Google login failed.");
+            const message = error instanceof Error ? error.message : "Google login failed.";
+            const normalized = message.toLowerCase();
+            if (normalized.includes("access denied") || normalized.includes("approved company account")) {
+              setError("Access denied. Please sign in with an approved company email.");
+              return;
+            }
+            setError(message);
           }
         })();
       },
     });
-    google.accounts.id.prompt();
+    tokenClient.requestAccessToken();
   }
 
   return (

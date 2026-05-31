@@ -1,3 +1,7 @@
+import json
+from urllib.error import URLError
+from urllib.request import Request, urlopen
+
 from jose import JWTError, jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -10,6 +14,12 @@ from app.utils.config import settings
 from app.utils.security import create_access_token, hash_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+SUPERVISOR_EMAIL = "supervisor@naptech.in"
+
+
+def _display_name_from_email(email: str) -> str:
+    name = email.split("@")[0].replace(".", " ").replace("_", " ").replace("-", " ").strip()
+    return name.title() or "Naptech User"
 
 
 def _auth_response(user) -> AuthResponse:
@@ -32,8 +42,30 @@ def _auth_response(user) -> AuthResponse:
     )
 
 
+def _is_email_allowed(email: str) -> bool:
+    normalized_email = email.strip().lower()
+    allowed_emails = settings.login_allowlist_emails
+    if normalized_email in allowed_emails:
+        return True
+
+    domain = settings.allowed_login_domain.strip().lower()
+    if domain and normalized_email.endswith(f"@{domain}"):
+        return True
+
+    return False
+
+
+def _assert_allowed_login(email: str) -> None:
+    if not _is_email_allowed(email):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. Use an approved company account.",
+        )
+
+
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthResponse:
+    _assert_allowed_login(str(payload.email))
     user = create_user(db, payload)
     return _auth_response(user)
 
@@ -41,15 +73,19 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthRes
 @router.post("/login", response_model=AuthResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
     try:
+        login_email = str(payload.email).strip().lower()
+        if login_email != SUPERVISOR_EMAIL:
+            _assert_allowed_login(login_email)
+
         # Permanent demo guardrail: always keep supervisor credentials valid.
-        if payload.email.lower() == "supervisor@naptech.in" and payload.password == "password":
-            demo_user = get_user_by_email(db, "supervisor@naptech.in")
+        if payload.email.lower() == SUPERVISOR_EMAIL and payload.password == "password":
+            demo_user = get_user_by_email(db, SUPERVISOR_EMAIL)
             if not demo_user:
                 demo_user = create_user(
                     db,
                     RegisterRequest(
                         name="Manager Demo",
-                        email="supervisor@naptech.in",
+                        email=SUPERVISOR_EMAIL,
                         password="password",
                         role=UserRole.MANAGER,
                     ),
@@ -78,17 +114,23 @@ def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)) -> 
     if not settings.google_client_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Google login is not configured")
 
-    try:
-        claims = jwt.get_unverified_claims(payload.credential)
-    except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google credential")
+    if payload.credential:
+        try:
+            claims = jwt.get_unverified_claims(payload.credential)
+        except JWTError:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google credential")
 
-    if claims.get("aud") != settings.google_client_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google client")
+        if claims.get("aud") != settings.google_client_id:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google client")
+    elif payload.access_token:
+        claims = _google_userinfo(payload.access_token)
+    else:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Google token is required")
 
     email = str(claims.get("email") or "").lower()
     if not email:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google email not available")
+    _assert_allowed_login(email)
 
     user = get_user_by_email(db, email)
     if not user:
@@ -98,8 +140,20 @@ def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)) -> 
                 name=str(claims.get("name") or email.split("@")[0]),
                 email=email,
                 password=f"google::{email}",
-                role=UserRole.INVENTORY,
+                role=UserRole.MANAGER,
             ),
         )
 
     return _auth_response(user)
+
+
+def _google_userinfo(access_token: str) -> dict:
+    request = Request(
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    try:
+        with urlopen(request, timeout=8) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except (OSError, URLError, json.JSONDecodeError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google access token")

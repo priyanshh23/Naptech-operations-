@@ -282,7 +282,7 @@ export default function QualityPage() {
             <Plus size={18} />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-slate-950">{editingId ? "Edit daily rejection row" : "Daily rejection report entry"}</h2>
+            <h2 className="text-lg font-semibold text-slate-950">Daily rejection report entry</h2>
             <p className="text-sm text-muted-foreground">Enter S.No, machine, part, rejection quantity, reason, cause, CR/MR, and remarks.</p>
           </div>
         </div>
@@ -321,21 +321,8 @@ export default function QualityPage() {
           <Field label="Remarks" onChange={(value) => setForm((current) => ({ ...current, remarks: value }))} placeholder="Optional" value={form.remarks} />
           <Button className="h-11 self-end rounded-xl" disabled={!form.serialNumber || !form.machineNumber || !form.partName || !form.reason || !form.cause} type="submit">
             <Save size={16} />
-            {editingId ? "Save Changes" : "Save Row"}
+            Save Row
           </Button>
-          {editingId ? (
-            <button
-              className="h-11 self-end rounded-xl border border-border px-4 text-sm font-semibold text-slate-700"
-              onClick={() => {
-                setEditingId(null);
-                setForm(initialForm);
-                setMessage("");
-              }}
-              type="button"
-            >
-              Cancel
-            </button>
-          ) : null}
         </form>
 
         <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -433,6 +420,86 @@ export default function QualityPage() {
         </div>
         <Pagination count={paginatedRows.length} page={page} setPage={setPage} total={filteredRows.length} totalPages={totalPages} />
       </Card>
+      {editingId ? (
+        <div className="modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <Card className="modal-card max-h-[calc(100vh-2rem)] w-full max-w-4xl overflow-y-auto rounded-2xl shadow-2xl">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-950">Edit daily rejection row</h2>
+                <p className="text-sm text-muted-foreground">Update machine, part, rejection details, and root-cause data.</p>
+              </div>
+              <button
+                className="rounded-xl border border-border p-2 text-slate-600"
+                onClick={() => {
+                  setEditingId(null);
+                  setForm(initialForm);
+                  setMessage("");
+                }}
+                type="button"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" onSubmit={handleSubmit}>
+              <Field label="Date" onChange={(value) => setForm((current) => ({ ...current, date: value }))} placeholder="" type="date" value={form.date} />
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-800">Shift</span>
+                <select
+                  className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  onChange={(event) => setForm((current) => ({ ...current, shift: event.target.value as QualityRejection["shift"] }))}
+                  value={form.shift}
+                >
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                </select>
+              </label>
+              <Field label="S. No." onChange={(value) => setForm((current) => ({ ...current, serialNumber: value }))} placeholder="1" value={form.serialNumber} />
+              <Field label="Machine Number" onChange={(value) => setForm((current) => ({ ...current, machineNumber: value }))} placeholder="CNC-08" value={form.machineNumber} />
+              <Field label="Part Name" onChange={(value) => setForm((current) => ({ ...current, partName: value }))} placeholder="Ring Cap" value={form.partName} />
+              <Field label="Rejection Qty." onChange={(value) => setForm((current) => ({ ...current, rejectionQuantity: Number(value || 0) }))} placeholder="1" type="number" value={String(form.rejectionQuantity)} />
+              <Field label="Reason" onChange={(value) => setForm((current) => ({ ...current, reason: value }))} placeholder="Thread not OK" value={form.reason} />
+              <Field label="Cause" onChange={(value) => setForm((current) => ({ ...current, cause: value }))} placeholder="Variation" value={form.cause} />
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-800">CR / MR</span>
+                <select
+                  className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  onChange={(event) => setForm((current) => ({ ...current, crMr: event.target.value as QualityRejection["crMr"] }))}
+                  value={form.crMr}
+                >
+                  <option value="MR">MR</option>
+                  <option value="CR">CR</option>
+                </select>
+              </label>
+              <label className="block md:col-span-2 xl:col-span-3">
+                <span className="mb-2 block text-sm font-medium text-slate-800">Remarks</span>
+                <textarea
+                  className="min-h-24 w-full rounded-xl border border-border px-3 py-2 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  onChange={(event) => setForm((current) => ({ ...current, remarks: event.target.value }))}
+                  value={form.remarks}
+                />
+              </label>
+              <div className="flex items-end gap-3 md:col-span-2 xl:col-span-3">
+                <Button className="h-11 rounded-xl" disabled={!form.serialNumber || !form.machineNumber || !form.partName || !form.reason || !form.cause} type="submit">
+                  <Save size={16} />
+                  Save Changes
+                </Button>
+                <button
+                  className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700"
+                  onClick={() => {
+                    setEditingId(null);
+                    setForm(initialForm);
+                    setMessage("");
+                  }}
+                  type="button"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      ) : null}
     </DashboardShell>
   );
 }

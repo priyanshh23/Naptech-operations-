@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Download, FileText, Loader2, NotebookPen, Pencil, Rows3, Save, Search, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, FileText, Loader2, NotebookPen, Pencil, Rows3, Save, Search, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -224,7 +224,7 @@ export default function InventoryEntryPage() {
           <div className="mb-6 flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#19C93B]">Daily Entry</p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-950">{editingId ? "Edit inventory movement" : "Inventory movement form"}</h2>
+              <h2 className="mt-2 text-2xl font-semibold text-slate-950">Inventory movement form</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
                 Fill date, part, schedule, inward, outward, and rejection. The system keeps the running balance for you.
               </p>
@@ -310,7 +310,7 @@ export default function InventoryEntryPage() {
             <div className="flex flex-wrap items-center gap-3 md:col-span-2">
               <Button className="h-11 rounded-xl px-5" disabled={isSaving || !form.part_name.trim()} type="submit">
                 {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-                {isSaving ? "Saving..." : editingId ? "Save Changes" : "Save Entry"}
+                {isSaving ? "Saving..." : "Save Entry"}
               </Button>
               <button
                 className="h-11 rounded-xl border border-border px-5 text-sm font-semibold text-slate-700"
@@ -322,7 +322,7 @@ export default function InventoryEntryPage() {
                 }}
                 type="button"
               >
-                {editingId ? "Cancel Edit" : "Clear Form"}
+                Clear Form
               </button>
             </div>
           </form>
@@ -382,7 +382,7 @@ export default function InventoryEntryPage() {
           </label>
         </div>
 
-        <div className="mb-4 grid gap-3 md:grid-cols-[repeat(2,220px)_auto] md:items-end">
+        <div className="mb-4 grid gap-3 md:grid-cols-[repeat(2,220px)_auto_auto] md:items-end">
           <label className="block">
             <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
               From Date
@@ -410,6 +410,14 @@ export default function InventoryEntryPage() {
               value={dateTo}
             />
           </label>
+          <button
+            className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isLoading}
+            onClick={() => void loadPageData()}
+            type="button"
+          >
+            {isLoading ? "Refreshing..." : "Refresh"}
+          </button>
           <button
             className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!dateFrom && !dateTo}
@@ -503,6 +511,68 @@ export default function InventoryEntryPage() {
           </div>
         </div>
       </Card>
+
+      {editingId ? (
+        <div className="modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <Card className="modal-card max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl shadow-2xl">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-950">Edit inventory movement</h2>
+                <p className="text-sm text-muted-foreground">Update date, quantities, and remarks for this row.</p>
+              </div>
+              <button
+                className="rounded-xl border border-border p-2 text-slate-600"
+                onClick={() => {
+                  setEditingId(null);
+                  setForm({ ...initialForm, date: form.date });
+                  setError("");
+                  setSuccessMessage("");
+                }}
+                type="button"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
+              <Field label="Date" name="date" onChange={(value) => setForm((current) => ({ ...current, date: value }))} type="date" value={form.date} />
+              <Field label="Part Name" name="part_name" onChange={(value) => setForm((current) => ({ ...current, part_name: value }))} placeholder="e.g. RING CAP" value={form.part_name} />
+              <Field label="Schedule Quantity" name="schedule_quantity" onChange={(value) => setForm((current) => ({ ...current, schedule_quantity: Number(value || 0) }))} type="number" value={String(form.schedule_quantity)} />
+              <Field label="IN Quantity" name="in_quantity" onChange={(value) => setForm((current) => ({ ...current, in_quantity: Number(value || 0) }))} type="number" value={String(form.in_quantity)} />
+              <Field label="OUT Quantity" name="out_quantity" onChange={(value) => setForm((current) => ({ ...current, out_quantity: Number(value || 0) }))} type="number" value={String(form.out_quantity)} />
+              <Field label="Rejection Quantity" name="rejection_quantity" onChange={(value) => setForm((current) => ({ ...current, rejection_quantity: Number(value || 0) }))} type="number" value={String(form.rejection_quantity)} />
+              <label className="block md:col-span-2">
+                <span className="mb-2 block text-sm font-medium text-slate-800">Remarks</span>
+                <textarea
+                  className="min-h-28 w-full rounded-2xl border border-border px-4 py-3 outline-none ring-0 transition focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  name="remarks"
+                  onChange={(event) => setForm((current) => ({ ...current, remarks: event.target.value }))}
+                  placeholder="Optional notes for dispatch, shortage, hold, or rejection reason"
+                  value={form.remarks ?? ""}
+                />
+              </label>
+              {error ? <p className="md:col-span-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</p> : null}
+              <div className="flex flex-wrap items-center gap-3 md:col-span-2">
+                <Button className="h-11 rounded-xl px-5" disabled={isSaving || !form.part_name.trim()} type="submit">
+                  {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </Button>
+                <button
+                  className="h-11 rounded-xl border border-border px-5 text-sm font-semibold text-slate-700"
+                  onClick={() => {
+                    setEditingId(null);
+                    setForm({ ...initialForm, date: form.date });
+                    setError("");
+                    setSuccessMessage("");
+                  }}
+                  type="button"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      ) : null}
     </DashboardShell>
   );
 }

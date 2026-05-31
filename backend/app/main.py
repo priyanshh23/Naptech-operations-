@@ -34,6 +34,9 @@ app.include_router(notifications.router)
 def startup() -> None:
     Base.metadata.create_all(bind=engine)
 
+    if settings.environment != "development":
+        return
+
     with SessionLocal() as db:
         demo_users = [
             ("Manager Demo", "supervisor@naptech.in", UserRole.MANAGER),

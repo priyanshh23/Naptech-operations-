@@ -92,6 +92,21 @@ body {
   background-color: rgba(255, 255, 255, 0.035);
 }
 
+.modal-overlay {
+  background: rgba(2, 11, 20, 0.82);
+  backdrop-filter: blur(10px);
+}
+
+.modal-card {
+  background-color: #ffffff !important;
+  color: #111827;
+}
+
+.dark .modal-card {
+  background-color: #101a25 !important;
+  color: #f8fafc;
+}
+
 .dark .text-\[\#111827\] {
   color: #f8fafc !important;
 }

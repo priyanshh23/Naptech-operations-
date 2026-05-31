@@ -49,6 +49,7 @@ function isNetworkErrorMessage(message: string): boolean {
   const normalized = message.toLowerCase();
   return (
     normalized.includes("failed to fetch") ||
+    normalized.includes("fetch failed") ||
     normalized.includes("networkerror") ||
     normalized.includes("load failed") ||
     normalized.includes("network request failed")
@@ -74,13 +75,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       });
 
       if (!response.ok) {
-        if (response.status === 401 && path !== "/auth/login") {
-          clearStoredSession();
-          if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-            window.location.href = "/login";
-          }
-        }
-
         let detail = "";
         const raw = await response.text();
         if (raw) {
@@ -89,6 +83,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
             detail = payload.detail ?? raw;
           } catch {
             detail = raw;
+          }
+        }
+        const normalizedDetail = detail.toLowerCase();
+        const isAccessDenied = normalizedDetail.includes("access denied") && normalizedDetail.includes("approved company account");
+        if ((response.status === 401 && path !== "/auth/login") || (response.status === 403 && isAccessDenied)) {
+          clearStoredSession();
+          if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+            window.location.href = "/login";
           }
         }
         throw new Error(detail || `Request failed: ${response.status}`);
@@ -122,10 +124,10 @@ export function login(email: string, password: string): Promise<AuthResponse> {
   });
 }
 
-export function googleLogin(credential: string): Promise<AuthResponse> {
+export function googleLogin(token: string, tokenType: "credential" | "access_token" = "credential"): Promise<AuthResponse> {
   return request<AuthResponse>("/auth/google", {
     method: "POST",
-    body: JSON.stringify({ credential }),
+    body: JSON.stringify(tokenType === "access_token" ? { access_token: token } : { credential: token }),
   });
 }
 

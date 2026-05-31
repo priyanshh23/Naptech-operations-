@@ -123,6 +123,7 @@ export function DashboardShell({
     window.localStorage.removeItem("naptech_access_token");
     window.localStorage.removeItem("naptech_user");
     window.localStorage.removeItem("naptech_dark_mode");
+    document.documentElement.classList.remove("dark");
     router.replace("/login");
   }, [router]);
 

@@ -218,7 +218,7 @@ export default function MaintenancePage() {
             <Plus size={18} />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-slate-950">{editingId ? "Edit maintenance job" : "Add maintenance job"}</h2>
+            <h2 className="text-lg font-semibold text-slate-950">Add maintenance job</h2>
             <p className="text-sm text-muted-foreground">Save machine breakdown duration and reason directly into the maintenance table.</p>
           </div>
         </div>
@@ -256,21 +256,8 @@ export default function MaintenancePage() {
           <Field label="Due By" onChange={(value) => setForm((current) => ({ ...current, dueBy: value }))} placeholder="" type="datetime-local" value={form.dueBy} />
           <Button className="h-11 self-end rounded-xl" disabled={!form.machine || !form.team || !form.breakdownFrom || !form.breakdownTo || !form.reason || !form.dueBy} type="submit">
             <Save size={16} />
-            {editingId ? "Save Changes" : "Save Job"}
+            Save Job
           </Button>
-          {editingId ? (
-            <button
-              className="h-11 self-end rounded-xl border border-border px-4 text-sm font-semibold text-slate-700"
-              onClick={() => {
-                setEditingId(null);
-                setForm(initialForm);
-                setMessage("");
-              }}
-              type="button"
-            >
-              Cancel
-            </button>
-          ) : null}
         </form>
 
         {message ? <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{message}</p> : null}
@@ -370,6 +357,78 @@ export default function MaintenancePage() {
           totalPages={totalPages}
         />
       </Card>
+      {editingId ? (
+        <div className="modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <Card className="modal-card max-h-[calc(100vh-2rem)] w-full max-w-4xl overflow-y-auto rounded-2xl shadow-2xl">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-950">Edit maintenance job</h2>
+                <p className="text-sm text-muted-foreground">Update machine breakdown details, ownership, and timeline.</p>
+              </div>
+              <button
+                className="rounded-xl border border-border p-2 text-slate-600"
+                onClick={() => {
+                  setEditingId(null);
+                  setForm(initialForm);
+                  setMessage("");
+                }}
+                type="button"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" onSubmit={handleSubmit}>
+              <Field label="Machine" onChange={(value) => setForm((current) => ({ ...current, machine: value }))} placeholder="CNC-12" value={form.machine} />
+              <Field label="Team" onChange={(value) => setForm((current) => ({ ...current, team: value }))} placeholder="Mechanical" value={form.team} />
+              <Field label="Breakdown From" onChange={(value) => setForm((current) => ({ ...current, breakdownFrom: value }))} placeholder="" type="datetime-local" value={form.breakdownFrom} />
+              <Field label="Breakdown To" onChange={(value) => setForm((current) => ({ ...current, breakdownTo: value }))} placeholder="" type="datetime-local" value={form.breakdownTo} />
+              <Field label="Reason" onChange={(value) => setForm((current) => ({ ...current, reason: value }))} placeholder="Spindle vibration" value={form.reason} />
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-800">Priority</span>
+                <select
+                  className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value as MaintenanceJob["priority"] }))}
+                  value={form.priority}
+                >
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-800">Status</span>
+                <select
+                  className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as MaintenanceJob["status"] }))}
+                  value={form.status}
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </label>
+              <Field label="Due By" onChange={(value) => setForm((current) => ({ ...current, dueBy: value }))} placeholder="" type="datetime-local" value={form.dueBy} />
+              <div className="flex items-end gap-3 md:col-span-2 xl:col-span-3">
+                <Button className="h-11 rounded-xl" disabled={!form.machine || !form.team || !form.breakdownFrom || !form.breakdownTo || !form.reason || !form.dueBy} type="submit">
+                  <Save size={16} />
+                  Save Changes
+                </Button>
+                <button
+                  className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700"
+                  onClick={() => {
+                    setEditingId(null);
+                    setForm(initialForm);
+                    setMessage("");
+                  }}
+                  type="button"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      ) : null}
     </DashboardShell>
   );
 }

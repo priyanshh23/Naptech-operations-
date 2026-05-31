@@ -417,9 +417,17 @@ export default function ProductionPage() {
             </label>
           </div>
 
-          <div className="mb-4 grid gap-3 md:grid-cols-[repeat(2,220px)_auto] md:items-end">
+          <div className="mb-4 grid gap-3 md:grid-cols-[repeat(2,220px)_auto_auto] md:items-end">
             <DateFilter label="From Date" onChange={setDateFrom} value={dateFrom} />
             <DateFilter label="To Date" min={dateFrom || undefined} onChange={setDateTo} value={dateTo} />
+            <button
+              className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isLoading}
+              onClick={() => void loadProductionData()}
+              type="button"
+            >
+              {isLoading ? "Refreshing..." : "Refresh"}
+            </button>
             <button
               className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!dateFrom && !dateTo}
@@ -552,8 +560,8 @@ export default function ProductionPage() {
       </section>
 
       {editingEntry && editForm ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <Card className="w-full max-w-4xl rounded-2xl">
+        <div className="modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <Card className="modal-card max-h-[calc(100vh-2rem)] w-full max-w-4xl overflow-y-auto rounded-2xl shadow-2xl">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-slate-950">Edit production entry</h2>

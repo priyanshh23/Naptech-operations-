@@ -7,9 +7,25 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.models.user import User, UserRole
 from app.services.user_service import get_user_by_email
+from app.utils.config import settings
 from app.utils.security import decode_access_token
 
 bearer_scheme = HTTPBearer()
+SUPERVISOR_EMAIL = "supervisor@naptech.in"
+
+
+def _is_email_allowed(email: str) -> bool:
+    normalized_email = email.strip().lower()
+    if normalized_email == SUPERVISOR_EMAIL:
+        return True
+    if normalized_email in settings.login_allowlist_emails:
+        return True
+
+    domain = settings.allowed_login_domain.strip().lower()
+    if domain and normalized_email.endswith(f"@{domain}"):
+        return True
+
+    return False
 
 
 def get_current_user(
@@ -26,6 +42,8 @@ def get_current_user(
     user = get_user_by_email(db, email)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    if not _is_email_allowed(user.email):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. Use an approved company account.")
     return user
 
 

@@ -1,7 +1,7 @@
 import type { AuthUser, Role } from "@/lib/types";
 import { useEffect, useState } from "react";
 
-const deleteRoles: Role[] = ["admin", "manager"];
+const deleteRoles: Role[] = ["manager"];
 
 export function getStoredUser(): AuthUser | null {
   if (typeof window === "undefined") return null;

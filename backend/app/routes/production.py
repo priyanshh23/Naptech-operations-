@@ -28,7 +28,7 @@ from app.services.production_service import (
 router = APIRouter(tags=["production"])
 
 PRODUCTION_EDIT_ROLES = (UserRole.ADMIN, UserRole.MANAGER, UserRole.SUPERVISOR, UserRole.PRODUCTION)
-MANAGER_DELETE_ROLES = (UserRole.ADMIN, UserRole.MANAGER)
+MANAGER_DELETE_ROLES = (UserRole.MANAGER,)
 
 
 @router.get("/production-entry", response_model=ProductionEntryListResponse)

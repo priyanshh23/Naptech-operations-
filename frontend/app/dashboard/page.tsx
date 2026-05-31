@@ -262,7 +262,7 @@ export default function DashboardPage() {
     <DashboardShell
       headerActions={
         <>
-          <div className="grid gap-3 sm:grid-cols-[180px_180px_auto_auto_auto]">
+          <div className="grid gap-3 sm:grid-cols-[180px_180px_auto_auto_auto_auto]">
             <label className="block">
               <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
                 <CalendarDays size={13} />
@@ -287,6 +287,14 @@ export default function DashboardPage() {
                 value={dateTo}
               />
             </label>
+            <button
+              className="h-11 self-end rounded-xl border border-border bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+              disabled={isLoading}
+              onClick={() => void loadDashboard()}
+              type="button"
+            >
+              {isLoading ? "Refreshing..." : "Refresh"}
+            </button>
             <button
               className="h-11 self-end rounded-xl border border-border bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
               disabled={!dateFrom && !dateTo}

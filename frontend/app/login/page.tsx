@@ -1,9 +1,15 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { BrandingPanel } from "@/components/login/branding-panel";
 import { LoginForm } from "@/components/login/login-form";
 
 export default function LoginPage() {
+  useEffect(() => {
+    document.documentElement.classList.remove("dark");
+  }, []);
+
   return (
     <main className="relative h-screen overflow-hidden bg-[#F7F9FB] text-[#111827]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(25,201,59,0.08),transparent_20%),radial-gradient(circle_at_0%_100%,rgba(163,255,18,0.08),transparent_20%),linear-gradient(180deg,#ffffff_0%,#F7F9FB_100%)]" />

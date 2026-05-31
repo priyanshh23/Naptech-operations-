@@ -29,7 +29,7 @@ from app.services.inventory_service import (
 router = APIRouter(tags=["inventory"])
 
 INVENTORY_EDIT_ROLES = (UserRole.ADMIN, UserRole.MANAGER, UserRole.SUPERVISOR, UserRole.INVENTORY)
-MANAGER_DELETE_ROLES = (UserRole.ADMIN, UserRole.MANAGER)
+MANAGER_DELETE_ROLES = (UserRole.MANAGER,)
 
 
 @router.get("/inventory-entry", response_model=InventoryEntryListResponse)

@@ -201,7 +201,7 @@ export default function InventoryLogsPage() {
       />
 
       <Card className="rounded-2xl border-slate-200">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_220px_repeat(2,180px)_auto] lg:items-end">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_220px_repeat(2,180px)_auto_auto] lg:items-end">
           <label className="flex h-11 items-center gap-2 rounded-xl border border-border bg-white px-3">
             <Search size={18} className="text-muted-foreground" />
             <input
@@ -263,6 +263,14 @@ export default function InventoryLogsPage() {
               value={dateTo}
             />
           </label>
+          <button
+            className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isLoading}
+            onClick={() => void loadLogs()}
+            type="button"
+          >
+            {isLoading ? "Refreshing..." : "Refresh"}
+          </button>
           <button
             className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!search && !partNameFilter && !dateFrom && !dateTo}
@@ -391,8 +399,8 @@ export default function InventoryLogsPage() {
       </Card>
 
       {editingEntry && editForm ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-          <Card className="w-full max-w-3xl rounded-2xl">
+        <div className="modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <Card className="modal-card max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl shadow-2xl">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-slate-950">Edit inventory entry</h2>
