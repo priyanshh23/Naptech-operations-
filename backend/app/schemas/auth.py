@@ -20,6 +20,17 @@ class GoogleLoginRequest(BaseModel):
     access_token: Optional[str] = None
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+    reset_code: str
+    new_password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
 class RegisterRequest(BaseModel):
     name: str
     email: EmailStr

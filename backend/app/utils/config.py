@@ -14,8 +14,9 @@ class Settings(BaseSettings):
     backend_cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
     inventory_low_threshold: int = 1000
     google_client_id: str = ""
-    allowed_login_domain: str = "naptech.in"
-    allowed_login_emails: str = ""
+    allowed_login_domain: str = ""
+    allowed_login_emails: str = "priyanshgupta9877@gmail.com,naptechprecision@gmail.com"
+    password_reset_code: str = ""
 
     model_config = SettingsConfigDict(
         env_file=str(Path(__file__).resolve().parents[2] / ".env"),

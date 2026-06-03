@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.middleware.auth import get_current_user, require_roles
-from app.models.user import User, UserRole
+from app.middleware.auth import get_current_user, require_full_access
+from app.models.user import User
 from app.schemas.production import (
     MachineAnalyticsRow,
     ProductionEntryCreate,
@@ -27,10 +27,6 @@ from app.services.production_service import (
 
 router = APIRouter(tags=["production"])
 
-PRODUCTION_EDIT_ROLES = (UserRole.ADMIN, UserRole.MANAGER, UserRole.SUPERVISOR, UserRole.PRODUCTION)
-MANAGER_DELETE_ROLES = (UserRole.MANAGER,)
-
-
 @router.get("/production-entry", response_model=ProductionEntryListResponse)
 def get_production_entries(
     search: Optional[str] = Query(default=None),
@@ -47,7 +43,7 @@ def get_production_entries(
 def post_production_entry(
     payload: ProductionEntryCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(*PRODUCTION_EDIT_ROLES)),
+    current_user: User = Depends(require_full_access),
 ) -> ProductionEntryResponse:
     return create_production_entry(db, payload, current_user)
 
@@ -56,7 +52,7 @@ def post_production_entry(
 def post_production_entries(
     payload: list[ProductionEntryCreate],
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(*PRODUCTION_EDIT_ROLES)),
+    current_user: User = Depends(require_full_access),
 ) -> list[ProductionEntryResponse]:
     return create_production_entries(db, payload, current_user)
 
@@ -66,7 +62,7 @@ def put_production_entry(
     entry_id: int,
     payload: ProductionEntryUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(*PRODUCTION_EDIT_ROLES)),
+    _: User = Depends(require_full_access),
 ) -> ProductionEntryResponse:
     return update_production_entry(db, entry_id, payload)
 
@@ -75,7 +71,7 @@ def put_production_entry(
 def remove_production_entry(
     entry_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(*MANAGER_DELETE_ROLES)),
+    _: User = Depends(require_full_access),
 ) -> None:
     delete_production_entry(db, entry_id)
 

@@ -3,7 +3,7 @@
 import { ChevronLeft, ChevronRight, Download, FileText, Filter, Loader2, Pencil, Save, Search, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { AccessDenied } from "@/components/dashboard/access-denied";
@@ -30,6 +30,7 @@ export default function InventoryLogsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+  const deletedEntryIdsRef = useRef<Set<number>>(new Set());
   const { isReady: isUserReady, user: currentUser } = useStoredUser();
   const canDelete = canDeleteEntries(currentUser);
   const canAccess = canUseDepartment(currentUser, "inventory");
@@ -84,7 +85,7 @@ export default function InventoryLogsPage() {
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
       });
-      setEntries(response.items);
+      setEntries(withoutDeletedIds(response.items, deletedEntryIdsRef.current));
       setTotal(response.total);
     } catch {
       setError("Unable to load inventory logs. Please login again and retry.");
@@ -98,10 +99,19 @@ export default function InventoryLogsPage() {
     if (!confirmed) return;
 
     setError("");
+    const previousEntries = entries;
+    const previousTotal = total;
+    deletedEntryIdsRef.current.add(entry.id);
+    setEntries((current) => current.filter((item) => item.id !== entry.id));
+    setTotal((current) => Math.max(0, current - 1));
+
     try {
       await deleteInventoryEntry(entry.id);
-      await Promise.all([loadSummary(), loadLogs()]);
+      void Promise.all([loadSummary(), loadLogs()]);
     } catch (error) {
+      deletedEntryIdsRef.current.delete(entry.id);
+      setEntries(previousEntries);
+      setTotal(previousTotal);
       const message = error instanceof Error ? error.message : "Inventory entry could not be deleted.";
       setError(message);
     }
@@ -440,6 +450,10 @@ export default function InventoryLogsPage() {
       ) : null}
     </DashboardShell>
   );
+}
+
+function withoutDeletedIds<T extends { id: number }>(items: T[], deletedIds: Set<number>): T[] {
+  return items.filter((item) => !deletedIds.has(item.id));
 }
 
 const inventoryExportColumns = [

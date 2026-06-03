@@ -10,9 +10,11 @@ import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { ActiveTasksTable, LowStockTable } from "@/components/dashboard/tables";
+import { AccessDenied } from "@/components/dashboard/access-denied";
 import { Card } from "@/components/ui";
-import { getDashboardSummary } from "@/lib/api";
+import { getDashboardSummary, getMaintenanceJobs, getQualityRejections } from "@/lib/api";
 import { downloadExcelSections, printPdfSections } from "@/lib/export-utils";
+import { hasFullAccessEmail, useStoredUser } from "@/lib/permissions";
 import type { DashboardSummary } from "@/lib/types";
 import type {
   ActiveProductionTask,
@@ -55,25 +57,41 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [qualityRows, setQualityRows] = useState<QualityOverviewRow[]>([]);
   const [maintenanceRows, setMaintenanceRows] = useState<MaintenanceOverviewRow[]>([]);
+  const { isReady, user: currentUser } = useStoredUser();
+  const canAccessDashboard = hasFullAccessEmail(currentUser);
 
   useEffect(() => {
-    void loadDashboard();
-  }, [dateFrom, dateTo]);
+    if (isReady && canAccessDashboard) {
+      void loadDashboard();
+    }
+  }, [dateFrom, dateTo, isReady, canAccessDashboard]);
 
-  useEffect(() => {
-    setQualityRows(readQualityRows());
-    setMaintenanceRows(readMaintenanceRows());
-  }, []);
+  async function loadDepartmentRows() {
+    try {
+      const [qualityResponse, maintenanceResponse] = await Promise.all([
+        getQualityRejections(),
+        getMaintenanceJobs(),
+      ]);
+      setQualityRows(qualityResponse.items);
+      setMaintenanceRows(maintenanceResponse.items);
+    } catch {
+      setQualityRows([]);
+      setMaintenanceRows([]);
+    }
+  }
 
   async function loadDashboard() {
     setIsLoading(true);
     setError("");
 
     try {
-      const response = await getDashboardSummary({
-        date_from: dateFrom || undefined,
-        date_to: dateTo || undefined,
-      });
+      const [response] = await Promise.all([
+        getDashboardSummary({
+          date_from: dateFrom || undefined,
+          date_to: dateTo || undefined,
+        }),
+        loadDepartmentRows(),
+      ]);
       setSummary(response);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to load live dashboard data.";
@@ -258,6 +276,14 @@ export default function DashboardPage() {
     },
   ];
 
+  if (isReady && !canAccessDashboard) {
+    return (
+      <DashboardShell>
+        <AccessDenied />
+      </DashboardShell>
+    );
+  }
+
   return (
     <DashboardShell
       headerActions={
@@ -426,24 +452,6 @@ function DepartmentOverviewCard({ delay, item }: Readonly<{ delay: number; item:
       </p>
     </DashboardCard>
   );
-}
-
-function readQualityRows(): QualityOverviewRow[] {
-  try {
-    const rows = JSON.parse(window.localStorage.getItem("naptech_quality_rejection_rows") || "[]") as QualityOverviewRow[];
-    return Array.isArray(rows) ? rows : [];
-  } catch {
-    return [];
-  }
-}
-
-function readMaintenanceRows(): MaintenanceOverviewRow[] {
-  try {
-    const rows = JSON.parse(window.localStorage.getItem("naptech_maintenance_jobs") || "[]") as MaintenanceOverviewRow[];
-    return Array.isArray(rows) ? rows : [];
-  } catch {
-    return [];
-  }
 }
 
 const simpleColumns = [

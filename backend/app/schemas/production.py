@@ -1,11 +1,12 @@
-from datetime import date, datetime
+from datetime import date as date_type
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
 
 
 class ProductionEntryBase(BaseModel):
-    date: date
+    date: date_type
     shift: str = Field(min_length=1, max_length=20)
     machine_number: str = Field(min_length=1, max_length=80)
     operator_name: str = Field(min_length=1, max_length=120)
@@ -23,7 +24,7 @@ class ProductionEntryCreate(ProductionEntryBase):
 
 
 class ProductionEntryUpdate(BaseModel):
-    date: Optional[date] = None
+    date: Optional[date_type] = None
     shift: Optional[str] = Field(default=None, min_length=1, max_length=20)
     machine_number: Optional[str] = Field(default=None, min_length=1, max_length=80)
     operator_name: Optional[str] = Field(default=None, min_length=1, max_length=120)

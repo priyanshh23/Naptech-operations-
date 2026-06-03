@@ -5,7 +5,6 @@ import {
   Boxes,
   ChevronDown,
   Home,
-  LayoutDashboard,
   Menu,
   Moon,
   PackageCheck,
@@ -23,7 +22,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
-import { getNotifications } from "@/lib/api";
+import { changePassword, getNotifications } from "@/lib/api";
 import type { Role } from "@/lib/types";
 import { canUseDepartment, roleLabel } from "@/lib/permissions";
 
@@ -46,7 +45,6 @@ const operations: NavItem[] = [
 type ManagementItem = Omit<NavItem, "department">;
 
 const management: ManagementItem[] = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/notifications", label: "Alerts", icon: Bell },
 ];
 
@@ -64,10 +62,15 @@ export function DashboardShell({
   const [isMounted, setIsMounted] = useState(false);
   const [isSessionChecked, setIsSessionChecked] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [userName, setUserName] = useState("Supervisor Demo");
-  const [userRole, setUserRole] = useState("Supervisor");
+  const [userName, setUserName] = useState("Admin");
+  const [userEmail, setUserEmail] = useState("priyanshgupta9877@gmail.com");
+  const [userRole, setUserRole] = useState("Manager");
   const [role, setRole] = useState<Role>("manager");
   const [alertCount, setAlertCount] = useState(0);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   useEffect(() => {
     const token = window.localStorage.getItem("naptech_access_token");
@@ -81,12 +84,17 @@ export function DashboardShell({
     const savedUser = window.localStorage.getItem("naptech_user");
     if (savedUser) {
       try {
-        const parsedUser = JSON.parse(savedUser) as { name?: string; role?: string };
-        setUserName(parsedUser.name || "Supervisor Demo");
-        setRole((parsedUser.role as Role) || "manager");
-        setUserRole(parsedUser.role ? roleLabel(parsedUser.role as Role) : "Manager");
+        const parsedUser = JSON.parse(savedUser) as { email?: string; name?: string; role?: string };
+        const parsedEmail = parsedUser.email || "priyanshgupta9877@gmail.com";
+        const isFullAccessEmail = ["priyanshgupta9877@gmail.com", "naptechprecision@gmail.com"].includes(parsedEmail.trim().toLowerCase());
+        const parsedRole = (isFullAccessEmail ? "manager" : parsedUser.role || "manager") as Role;
+        setUserName(parsedUser.name || "Admin");
+        setUserEmail(parsedEmail);
+        setRole(parsedRole);
+        setUserRole(roleLabel(parsedRole));
       } catch {
-        setUserName("Supervisor Demo");
+        setUserName("Admin");
+        setUserEmail("priyanshgupta9877@gmail.com");
         setRole("manager");
         setUserRole("Manager");
       }
@@ -127,10 +135,41 @@ export function DashboardShell({
     router.replace("/login");
   }, [router]);
 
+  const handlePasswordChange = useCallback(async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPasswordError("");
+    setPasswordMessage("");
+    setIsChangingPassword(true);
+
+    const formData = new FormData(event.currentTarget);
+    const currentPassword = String(formData.get("currentPassword"));
+    const newPassword = String(formData.get("newPassword"));
+    const confirmPassword = String(formData.get("confirmPassword"));
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New password and confirm password do not match.");
+      setIsChangingPassword(false);
+      return;
+    }
+
+    try {
+      const response = await changePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      setPasswordMessage(response.message);
+      event.currentTarget.reset();
+    } catch (error) {
+      setPasswordError(error instanceof Error ? error.message : "Password could not be changed.");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  }, []);
+
   const isDashboard = useMemo(() => pathname === "/dashboard", [pathname]);
   const visibleOperations = useMemo(
-    () => operations.filter((item) => canUseDepartment({ id: 0, name: userName, email: "", role }, item.department)),
-    [role, userName],
+    () => operations.filter((item) => canUseDepartment({ id: 0, name: userName, email: userEmail, role }, item.department)),
+    [role, userEmail, userName],
   );
 
   if (!isSessionChecked) {
@@ -182,7 +221,7 @@ export function DashboardShell({
       </aside>
 
       <div className="min-w-0 overflow-x-hidden lg:pl-[236px]">
-        <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 px-4 py-3 backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-[#07111A]/90 lg:px-8">
+        <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 px-4 py-3 backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-[#07111A]/90 lg:px-8 relative">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <button
@@ -231,20 +270,83 @@ export function DashboardShell({
             {headerActions ? <div className="flex flex-wrap items-end gap-3">{headerActions}</div> : null}
           </div>
 
-          {profileOpen ? (
-            <div className="absolute right-8 top-16 z-50 w-52 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
-              <button className="w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={() => router.push("/dashboard")} type="button">
-                Profile
-              </button>
-              <button className="w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-red-600 hover:bg-red-50" onClick={logout} type="button">
-                Logout
-              </button>
-            </div>
-          ) : null}
         </header>
 
         <main className="min-w-0 overflow-x-hidden p-4 lg:p-6">{children}</main>
       </div>
+
+      {profileOpen ? (
+        <>
+          <button
+            aria-label="Close profile menu"
+            className="fixed inset-0 z-[70] cursor-default bg-transparent"
+            onClick={() => setProfileOpen(false)}
+            type="button"
+          />
+          <div className="fixed right-3 top-14 z-[90] w-44 rounded-xl border border-slate-200 bg-white p-1 shadow-2xl dark:border-white/10 dark:bg-[#151F2A] sm:right-6">
+            <button className="w-full rounded-lg px-3 py-1.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-white/10" onClick={() => router.push("/dashboard")} type="button">
+              Profile
+            </button>
+            <button
+              className="w-full rounded-lg px-3 py-1.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-white/10"
+              onClick={() => {
+                setPasswordOpen(true);
+                setProfileOpen(false);
+                setPasswordError("");
+                setPasswordMessage("");
+              }}
+              type="button"
+            >
+              Change password
+            </button>
+            <button className="w-full rounded-lg px-3 py-1.5 text-left text-xs font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10" onClick={logout} type="button">
+              Logout
+            </button>
+          </div>
+        </>
+      ) : null}
+
+      {passwordOpen ? (
+        <div className="modal-overlay">
+          <form className="modal-card max-w-md space-y-4" onSubmit={handlePasswordChange}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#19C93B]">Account security</p>
+                <h2 className="mt-2 text-xl font-semibold text-slate-950 dark:text-white">Change password</h2>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Use your current password, then set a new one.</p>
+              </div>
+              <button className="rounded-full border border-slate-200 p-2 text-slate-500 dark:border-white/15" onClick={() => setPasswordOpen(false)} type="button">
+                <X size={18} />
+              </button>
+            </div>
+
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Current password
+              <input className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none dark:border-white/15 dark:bg-[#1F2933] dark:text-white" name="currentPassword" required type="password" />
+            </label>
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+              New password
+              <input className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none dark:border-white/15 dark:bg-[#1F2933] dark:text-white" minLength={6} name="newPassword" required type="password" />
+            </label>
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Confirm new password
+              <input className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none dark:border-white/15 dark:bg-[#1F2933] dark:text-white" minLength={6} name="confirmPassword" required type="password" />
+            </label>
+
+            {passwordError ? <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{passwordError}</p> : null}
+            {passwordMessage ? <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{passwordMessage}</p> : null}
+
+            <div className="flex justify-end gap-3">
+              <button className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 dark:border-white/15 dark:text-slate-200" onClick={() => setPasswordOpen(false)} type="button">
+                Cancel
+              </button>
+              <button className="rounded-xl bg-[#19C93B] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled={isChangingPassword} type="submit">
+                {isChangingPassword ? "Changing..." : "Change password"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </div>
   );
 }

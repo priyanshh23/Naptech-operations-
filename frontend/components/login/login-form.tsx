@@ -1,13 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, EyeOff, Lock, Mail } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, KeyRound, Lock, Mail } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { Button, Card } from "@/components/ui";
-import { getDashboardSummary, googleLogin, login } from "@/lib/api";
+import { forgotPassword, getDashboardSummary, googleLogin, login } from "@/lib/api";
 
 import { LoginInput } from "./login-input";
 
@@ -37,8 +37,12 @@ function GoogleMark() {
 export function LoginForm() {
   const router = useRouter();
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isResetMode, setIsResetMode] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
@@ -66,14 +70,19 @@ export function LoginForm() {
   }, [googleClientId, router]);
 
   function storeSession(response: Awaited<ReturnType<typeof login>>) {
+    const fullAccessEmails = ["priyanshgupta9877@gmail.com", "naptechprecision@gmail.com"];
+    const user = fullAccessEmails.includes(response.user.email.trim().toLowerCase())
+      ? { ...response.user, role: "manager" as const }
+      : response.user;
     window.localStorage.setItem("naptech_access_token", response.access_token);
-    window.localStorage.setItem("naptech_user", JSON.stringify(response.user));
-    window.localStorage.setItem("naptech_demo_session", response.user.email);
+    window.localStorage.setItem("naptech_user", JSON.stringify(user));
+    window.localStorage.setItem("naptech_demo_session", user.email);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setMessage("");
     setIsLoading(true);
     window.localStorage.removeItem("naptech_access_token");
     window.localStorage.removeItem("naptech_user");
@@ -103,7 +112,7 @@ export function LoginForm() {
         return;
       }
       if (normalized.includes("invalid email or password")) {
-        setError("Use supervisor@naptech.in, inventory@naptech.in, production@naptech.in, or quality@naptech.in with password.");
+        setError("Use priyanshgupta9877@gmail.com or naptechprecision@gmail.com with your password.");
         return;
       }
       if (normalized.includes("access denied") || normalized.includes("approved company account")) {
@@ -111,6 +120,32 @@ export function LoginForm() {
         return;
       }
       setError(message);
+    }
+  }
+
+  async function handleForgotPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+    setIsLoading(true);
+
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get("email"));
+    const resetCode = String(formData.get("resetCode"));
+    const newPassword = String(formData.get("newPassword"));
+
+    try {
+      const response = await forgotPassword({
+        email,
+        reset_code: resetCode,
+        new_password: newPassword,
+      });
+      setMessage(response.message);
+      setIsResetMode(false);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Password could not be reset.");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -216,34 +251,82 @@ export function LoginForm() {
             </span>
           </div>
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
+          <form className="space-y-4" onSubmit={isResetMode ? handleForgotPassword : handleSubmit}>
             <LoginInput
               autoComplete="email"
-              defaultValue="supervisor@naptech.in"
+              defaultValue="priyanshgupta9877@gmail.com"
               icon={Mail}
               label="Email"
               name="email"
               placeholder="Enter your email"
               type="email"
             />
-            <LoginInput
-              autoComplete="current-password"
-              defaultValue="password"
-              icon={Lock}
-              label="Password"
-              name="password"
-              placeholder="Enter your password"
-              rightSlot={<EyeOff className="text-slate-400" size={18} />}
-              type="password"
-            />
+            {isResetMode ? (
+              <>
+                <LoginInput
+                  autoComplete="one-time-code"
+                  icon={KeyRound}
+                  label="Reset code"
+                  name="resetCode"
+                  placeholder="Enter reset code from admin"
+                  type="text"
+                />
+                <LoginInput
+                  autoComplete="new-password"
+                  icon={Lock}
+                  label="New password"
+                  name="newPassword"
+                  placeholder="Enter new password"
+                  rightSlot={
+                    <button
+                      aria-label={showResetPassword ? "Hide new password" : "Show new password"}
+                      className="text-slate-400 transition hover:text-slate-700"
+                      onClick={() => setShowResetPassword((value) => !value)}
+                      type="button"
+                    >
+                      {showResetPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  }
+                  type={showResetPassword ? "text" : "password"}
+                />
+              </>
+            ) : (
+              <LoginInput
+                autoComplete="current-password"
+                defaultValue="password"
+                icon={Lock}
+                label="Password"
+                name="password"
+                placeholder="Enter your password"
+                rightSlot={
+                  <button
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="text-slate-400 transition hover:text-slate-700"
+                    onClick={() => setShowPassword((value) => !value)}
+                    type="button"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                }
+                type={showPassword ? "text" : "password"}
+              />
+            )}
 
             <div className="flex items-center justify-between gap-4 text-sm">
               <label className="flex items-center gap-3 text-[#6B7280]">
                 <input className="h-4 w-4 rounded border-slate-300 accent-[#19C93B]" defaultChecked type="checkbox" />
                 Remember me
               </label>
-              <button className="font-semibold text-[#19C93B] transition hover:text-[#0f9f2d]" type="button">
-                Forgot password?
+              <button
+                className="font-semibold text-[#19C93B] transition hover:text-[#0f9f2d]"
+                onClick={() => {
+                  setError("");
+                  setMessage("");
+                  setIsResetMode((value) => !value);
+                }}
+                type="button"
+              >
+                {isResetMode ? "Back to sign in" : "Forgot password?"}
               </button>
             </div>
 
@@ -252,13 +335,18 @@ export function LoginForm() {
                 {error}
               </p>
             ) : null}
+            {message ? (
+              <p className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+                {message}
+              </p>
+            ) : null}
 
             <Button
               className="group h-12 w-full rounded-2xl bg-[linear-gradient(135deg,#19C93B_0%,#15b033_100%)] text-base shadow-[0_18px_32px_rgba(25,201,59,0.22)] transition hover:translate-y-[-1px] hover:opacity-100"
               disabled={isLoading}
               type="submit"
             >
-              {isLoading ? "Opening dashboard..." : "Sign In"}
+              {isLoading ? (isResetMode ? "Updating password..." : "Opening dashboard...") : isResetMode ? "Reset Password" : "Sign In"}
               <ArrowRight className="transition group-hover:translate-x-1" size={18} />
             </Button>
 

@@ -8,12 +8,18 @@ import type {
   InventoryLogListResponse,
   InventorySummary,
   MachineAnalyticsRow,
+  MaintenanceJob,
+  MaintenanceJobListResponse,
+  MaintenanceJobPayload,
   Notification,
   ProductionEntry,
   ProductionEntryListResponse,
   ProductionEntryPayload,
   ProductionSummary,
   ProductionTask,
+  QualityRejection,
+  QualityRejectionListResponse,
+  QualityRejectionPayload,
 } from "@/lib/types";
 
 const configuredApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -56,6 +62,43 @@ function isNetworkErrorMessage(message: string): boolean {
   );
 }
 
+function formatApiErrorDetail(detail: unknown): string {
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === "string") {
+          return item;
+        }
+        if (item && typeof item === "object" && "msg" in item && typeof item.msg === "string") {
+          const location =
+            "loc" in item && Array.isArray(item.loc)
+              ? item.loc.filter((part: unknown) => part !== "body").join(".")
+              : "";
+          return location ? `${location}: ${item.msg}` : item.msg;
+        }
+        return JSON.stringify(item);
+      })
+      .filter(Boolean)
+      .join("; ");
+  }
+
+  if (detail && typeof detail === "object") {
+    if ("message" in detail && typeof detail.message === "string") {
+      return detail.message;
+    }
+    if ("error" in detail && typeof detail.error === "string") {
+      return detail.error;
+    }
+    return JSON.stringify(detail);
+  }
+
+  return "";
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getAuthToken();
   let networkFailureCount = 0;
@@ -79,8 +122,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         const raw = await response.text();
         if (raw) {
           try {
-            const payload = JSON.parse(raw) as { detail?: string };
-            detail = payload.detail ?? raw;
+            const payload = JSON.parse(raw) as { detail?: unknown };
+            detail = formatApiErrorDetail(payload.detail) || raw;
           } catch {
             detail = raw;
           }
@@ -128,6 +171,27 @@ export function googleLogin(token: string, tokenType: "credential" | "access_tok
   return request<AuthResponse>("/auth/google", {
     method: "POST",
     body: JSON.stringify(tokenType === "access_token" ? { access_token: token } : { credential: token }),
+  });
+}
+
+export function forgotPassword(payload: {
+  email: string;
+  reset_code: string;
+  new_password: string;
+}): Promise<{ message: string }> {
+  return request<{ message: string }>("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function changePassword(payload: {
+  current_password: string;
+  new_password: string;
+}): Promise<{ message: string }> {
+  return request<{ message: string }>("/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 
@@ -290,4 +354,167 @@ export function getMachineAnalytics(params?: {
 
 export function getNotifications(): Promise<Notification[]> {
   return request<Notification[]>("/notifications");
+}
+
+type ApiQualityRejection = {
+  id: number;
+  date: string;
+  shift: "A" | "B" | "C";
+  serial_number: string;
+  machine_number: string;
+  part_name: string;
+  rejection_quantity: number;
+  reason: string;
+  cause: string;
+  cr_mr: "CR" | "MR";
+  remarks: string | null;
+  updated_at: string;
+};
+
+function fromApiQuality(row: ApiQualityRejection): QualityRejection {
+  return {
+    id: row.id,
+    date: row.date,
+    shift: row.shift,
+    serialNumber: row.serial_number,
+    machineNumber: row.machine_number,
+    partName: row.part_name,
+    rejectionQuantity: row.rejection_quantity,
+    reason: row.reason,
+    cause: row.cause,
+    crMr: row.cr_mr,
+    remarks: row.remarks ?? "",
+    timestamp: row.updated_at,
+  };
+}
+
+function toApiQuality(payload: QualityRejectionPayload) {
+  return {
+    date: payload.date,
+    shift: payload.shift,
+    serial_number: payload.serialNumber,
+    machine_number: payload.machineNumber,
+    part_name: payload.partName,
+    rejection_quantity: payload.rejectionQuantity,
+    reason: payload.reason,
+    cause: payload.cause,
+    cr_mr: payload.crMr,
+    remarks: payload.remarks || null,
+  };
+}
+
+function toApiQualityUpdate(payload: Partial<QualityRejectionPayload>) {
+  return {
+    ...(payload.date !== undefined ? { date: payload.date } : {}),
+    ...(payload.shift !== undefined ? { shift: payload.shift } : {}),
+    ...(payload.serialNumber !== undefined ? { serial_number: payload.serialNumber } : {}),
+    ...(payload.machineNumber !== undefined ? { machine_number: payload.machineNumber } : {}),
+    ...(payload.partName !== undefined ? { part_name: payload.partName } : {}),
+    ...(payload.rejectionQuantity !== undefined ? { rejection_quantity: payload.rejectionQuantity } : {}),
+    ...(payload.reason !== undefined ? { reason: payload.reason } : {}),
+    ...(payload.cause !== undefined ? { cause: payload.cause } : {}),
+    ...(payload.crMr !== undefined ? { cr_mr: payload.crMr } : {}),
+    ...(payload.remarks !== undefined ? { remarks: payload.remarks || null } : {}),
+  };
+}
+
+export async function getQualityRejections(params?: { search?: string }): Promise<QualityRejectionListResponse> {
+  const query = new URLSearchParams();
+  if (params?.search) query.set("search", params.search);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  const response = await request<{ items: ApiQualityRejection[]; total: number }>(`/quality-rejections${suffix}`);
+  return { items: response.items.map(fromApiQuality), total: response.total };
+}
+
+export async function createQualityRejection(payload: QualityRejectionPayload): Promise<QualityRejection> {
+  const response = await request<ApiQualityRejection>("/quality-rejections", {
+    method: "POST",
+    body: JSON.stringify(toApiQuality(payload)),
+  });
+  return fromApiQuality(response);
+}
+
+export async function updateQualityRejection(entryId: number, payload: Partial<QualityRejectionPayload>): Promise<QualityRejection> {
+  const response = await request<ApiQualityRejection>(`/quality-rejections/${entryId}`, {
+    method: "PUT",
+    body: JSON.stringify(toApiQualityUpdate(payload)),
+  });
+  return fromApiQuality(response);
+}
+
+export async function deleteQualityRejection(entryId: number): Promise<void> {
+  await request<undefined>(`/quality-rejections/${entryId}`, {
+    method: "DELETE",
+  });
+}
+
+type ApiMaintenanceJob = {
+  id: number;
+  job_code: string;
+  machine: string;
+  team: string;
+  priority: "High" | "Medium" | "Low";
+  status: "Pending" | "In Progress" | "Completed";
+  breakdown_from: string;
+  breakdown_to: string;
+  reason: string;
+  due_by: string;
+};
+
+function fromApiMaintenance(row: ApiMaintenanceJob): MaintenanceJob {
+  return {
+    id: row.id,
+    jobCode: row.job_code,
+    machine: row.machine,
+    team: row.team,
+    priority: row.priority,
+    status: row.status,
+    breakdownFrom: row.breakdown_from,
+    breakdownTo: row.breakdown_to,
+    reason: row.reason,
+    dueBy: row.due_by,
+  };
+}
+
+function toApiMaintenance(payload: Partial<MaintenanceJobPayload>) {
+  return {
+    machine: payload.machine,
+    team: payload.team,
+    priority: payload.priority,
+    status: payload.status,
+    breakdown_from: payload.breakdownFrom,
+    breakdown_to: payload.breakdownTo,
+    reason: payload.reason,
+    due_by: payload.dueBy,
+  };
+}
+
+export async function getMaintenanceJobs(params?: { search?: string }): Promise<MaintenanceJobListResponse> {
+  const query = new URLSearchParams();
+  if (params?.search) query.set("search", params.search);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  const response = await request<{ items: ApiMaintenanceJob[]; total: number }>(`/maintenance-jobs${suffix}`);
+  return { items: response.items.map(fromApiMaintenance), total: response.total };
+}
+
+export async function createMaintenanceJob(payload: MaintenanceJobPayload): Promise<MaintenanceJob> {
+  const response = await request<ApiMaintenanceJob>("/maintenance-jobs", {
+    method: "POST",
+    body: JSON.stringify(toApiMaintenance(payload)),
+  });
+  return fromApiMaintenance(response);
+}
+
+export async function updateMaintenanceJob(jobId: number, payload: Partial<MaintenanceJobPayload>): Promise<MaintenanceJob> {
+  const response = await request<ApiMaintenanceJob>(`/maintenance-jobs/${jobId}`, {
+    method: "PUT",
+    body: JSON.stringify(toApiMaintenance(payload)),
+  });
+  return fromApiMaintenance(response);
+}
+
+export async function deleteMaintenanceJob(jobId: number): Promise<void> {
+  await request<undefined>(`/maintenance-jobs/${jobId}`, {
+    method: "DELETE",
+  });
 }

@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.database.session import get_db
-from app.middleware.auth import get_current_user, require_roles
+from app.middleware.auth import get_current_user, require_full_access
 from app.models.production_task import TaskStatus
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.schemas.production_task import ProductionTaskCreate, ProductionTaskResponse, ProductionTaskUpdate
 from app.services.task_service import complete_task, create_task, list_tasks, update_task
 
@@ -25,7 +25,7 @@ def get_tasks(
 def create_production_task(
     payload: ProductionTaskCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.ADMIN, UserRole.SUPERVISOR)),
+    _: User = Depends(require_full_access),
 ):
     return create_task(db, payload)
 
@@ -35,7 +35,7 @@ def update_production_task(
     task_id: int,
     payload: ProductionTaskUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.WORKER)),
+    _: User = Depends(require_full_access),
 ):
     return update_task(db, task_id, payload)
 
@@ -44,6 +44,6 @@ def update_production_task(
 def complete_production_task(
     task_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.WORKER)),
+    _: User = Depends(require_full_access),
 ):
     return complete_task(db, task_id)

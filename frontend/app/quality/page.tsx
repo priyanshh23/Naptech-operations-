@@ -2,78 +2,18 @@
 
 import { ChevronLeft, ChevronRight, Download, FileText, Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AccessDenied } from "@/components/dashboard/access-denied";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { Badge, Button, Card, PageHeader } from "@/components/ui";
+import { createQualityRejection, deleteQualityRejection, getQualityRejections, updateQualityRejection } from "@/lib/api";
 import { downloadExcel, printPdf } from "@/lib/export-utils";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { canDeleteEntries, canUseDepartment, useStoredUser } from "@/lib/permissions";
+import type { QualityRejection, QualityRejectionPayload } from "@/lib/types";
 
-type QualityRejection = {
-  id: string;
-  date: string;
-  shift: "A" | "B" | "C";
-  serialNumber: string;
-  machineNumber: string;
-  partName: string;
-  rejectionQuantity: number;
-  reason: string;
-  cause: string;
-  crMr: "CR" | "MR";
-  remarks: string;
-  timestamp: string;
-};
-
-const storageKey = "naptech_quality_rejection_rows";
-const legacyStorageKey = "naptech_quality_checks";
 const PAGE_SIZE = 10;
-
-const defaultQualityRows: QualityRejection[] = [
-  {
-    id: "QR-001",
-    date: "2026-05-29",
-    shift: "B",
-    serialNumber: "1",
-    machineNumber: "CNC-08",
-    partName: "HML-11 Hub",
-    rejectionQuantity: 1,
-    reason: "ID 0.18",
-    cause: "Power cut",
-    crMr: "MR",
-    remarks: "",
-    timestamp: "2026-05-29T10:00:00.000Z",
-  },
-  {
-    id: "QR-002",
-    date: "2026-05-29",
-    shift: "B",
-    serialNumber: "2",
-    machineNumber: "CNC-02",
-    partName: "LH Nut",
-    rejectionQuantity: 4,
-    reason: "OD undersize",
-    cause: "Variation",
-    crMr: "MR",
-    remarks: "",
-    timestamp: "2026-05-29T10:05:00.000Z",
-  },
-  {
-    id: "QR-003",
-    date: "2026-05-29",
-    shift: "B",
-    serialNumber: "3",
-    machineNumber: "CNC-05",
-    partName: "Nut Acorn",
-    rejectionQuantity: 1,
-    reason: "Thread not OK",
-    cause: "Variation",
-    crMr: "MR",
-    remarks: "",
-    timestamp: "2026-05-29T10:10:00.000Z",
-  },
-];
 
 const initialForm = {
   date: new Date().toISOString().slice(0, 10),
@@ -89,12 +29,14 @@ const initialForm = {
 };
 
 export default function QualityPage() {
-  const [qualityRows, setQualityRows] = useState<QualityRejection[]>(defaultQualityRows);
+  const [qualityRows, setQualityRows] = useState<QualityRejection[]>([]);
   const [form, setForm] = useState(initialForm);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const deletedRowIdsRef = useRef<Set<number>>(new Set());
   const { isReady: isUserReady, user: currentUser } = useStoredUser();
   const canDelete = canDeleteEntries(currentUser);
   const canAccess = canUseDepartment(currentUser, "quality");
@@ -132,21 +74,7 @@ export default function QualityPage() {
     if (initialSearch) {
       setSearch(initialSearch);
     }
-
-    const savedRows = window.localStorage.getItem(storageKey);
-    if (savedRows) {
-      try {
-        const parsedRows = JSON.parse(savedRows) as QualityRejection[];
-        if (parsedRows.every((row) => row.machineNumber && row.partName && row.crMr)) {
-          setQualityRows(parsedRows);
-          return;
-        }
-      } catch {
-        setQualityRows(defaultQualityRows);
-      }
-    }
-
-    window.localStorage.removeItem(legacyStorageKey);
+    void loadQualityRows();
   }, []);
 
   useEffect(() => {
@@ -169,45 +97,46 @@ export default function QualityPage() {
     );
   }
 
-  function saveRows(rows: QualityRejection[]) {
-    setQualityRows(rows);
-    window.localStorage.setItem(storageKey, JSON.stringify(rows));
+  async function loadQualityRows() {
+    setError("");
+    try {
+      const response = await getQualityRejections();
+      setQualityRows(withoutDeletedIds(response.items, deletedRowIdsRef.current));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to load quality rows.");
+    }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+    setError("");
 
     if (editingId) {
-      const rows = qualityRows.map((row) =>
-        row.id === editingId
-          ? {
-              ...row,
-              ...normalizeForm(),
-              timestamp: new Date().toISOString(),
-            }
-          : row,
-      );
-      saveRows(rows);
-      setEditingId(null);
-      setForm(initialForm);
-      setMessage("Daily rejection row updated.");
+      try {
+        await updateQualityRejection(editingId, normalizeForm());
+        await loadQualityRows();
+        setEditingId(null);
+        setForm(initialForm);
+        setMessage("Daily rejection row updated.");
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "Daily rejection row could not be updated.");
+      }
       return;
     }
 
-    const newRow: QualityRejection = {
-      id: `QR-${Date.now().toString().slice(-5)}`,
-      ...normalizeForm(),
-      timestamp: new Date().toISOString(),
-    };
-
-    saveRows([newRow, ...qualityRows]);
-    setPage(1);
-    setForm({ ...initialForm, date: form.date, shift: form.shift });
-    setMessage("Daily rejection row saved.");
+    try {
+      await createQualityRejection(normalizeForm());
+      await loadQualityRows();
+      setPage(1);
+      setForm({ ...initialForm, date: form.date, shift: form.shift });
+      setMessage("Daily rejection row saved.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Daily rejection row could not be saved.");
+    }
   }
 
-  function normalizeForm() {
+  function normalizeForm(): QualityRejectionPayload {
     return {
       date: form.date,
       shift: form.shift,
@@ -239,14 +168,28 @@ export default function QualityPage() {
     setMessage(`Editing ${row.id}.`);
   }
 
-  function handleDelete(row: QualityRejection) {
+  async function handleDelete(row: QualityRejection) {
     const confirmed = window.confirm(`Delete rejection row ${row.serialNumber || row.id}?`);
     if (!confirmed) return;
 
-    const rows = qualityRows.filter((item) => item.id !== row.id);
-    saveRows(rows);
-    setPage((current) => Math.min(current, Math.max(1, Math.ceil(rows.length / PAGE_SIZE))));
-    setMessage("Daily rejection row deleted.");
+    setError("");
+    const previousRows = qualityRows;
+    deletedRowIdsRef.current.add(row.id);
+    setQualityRows((current) => {
+      const nextRows = current.filter((item) => item.id !== row.id);
+      setPage((currentPage) => Math.min(currentPage, Math.max(1, Math.ceil(nextRows.length / PAGE_SIZE))));
+      return nextRows;
+    });
+
+    try {
+      await deleteQualityRejection(row.id);
+      void loadQualityRows();
+      setMessage("Daily rejection row deleted.");
+    } catch (error) {
+      deletedRowIdsRef.current.delete(row.id);
+      setQualityRows(previousRows);
+      setError(error instanceof Error ? error.message : "Daily rejection row could not be deleted.");
+    }
   }
 
   function exportExcel() {
@@ -332,6 +275,7 @@ export default function QualityPage() {
         </div>
 
         {message ? <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{message}</p> : null}
+        {error ? <p className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</p> : null}
       </Card>
 
       <Card>
@@ -405,7 +349,7 @@ export default function QualityPage() {
                     {canDelete ? (
                       <button
                         className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-red-100 px-3 text-xs font-semibold text-red-600 transition hover:bg-red-50"
-                        onClick={() => handleDelete(row)}
+                        onClick={() => void handleDelete(row)}
                         type="button"
                       >
                         <Trash2 size={14} />
@@ -502,6 +446,10 @@ export default function QualityPage() {
       ) : null}
     </DashboardShell>
   );
+}
+
+function withoutDeletedIds<T extends { id: number }>(items: T[], deletedIds: Set<number>): T[] {
+  return items.filter((item) => !deletedIds.has(item.id));
 }
 
 const qualityExportColumns = [

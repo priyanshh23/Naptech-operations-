@@ -1,11 +1,12 @@
-from datetime import date, datetime
+from datetime import date as date_type
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
 
 
 class InventoryEntryBase(BaseModel):
-    date: date
+    date: date_type
     part_name: str = Field(min_length=1, max_length=180)
     schedule_quantity: int = Field(default=0, ge=0)
     in_quantity: int = Field(default=0, ge=0)
@@ -19,7 +20,7 @@ class InventoryEntryCreate(InventoryEntryBase):
 
 
 class InventoryEntryUpdate(BaseModel):
-    date: Optional[date] = None
+    date: Optional[date_type] = None
     part_name: Optional[str] = Field(default=None, min_length=1, max_length=180)
     schedule_quantity: Optional[int] = Field(default=None, ge=0)
     in_quantity: Optional[int] = Field(default=None, ge=0)
@@ -61,7 +62,7 @@ class InventoryPartBalance(BaseModel):
     total_in_quantity: int
     total_out_quantity: int
     total_rejection_quantity: int
-    latest_entry_date: date
+    latest_entry_date: date_type
     is_low_inventory: bool
 
 

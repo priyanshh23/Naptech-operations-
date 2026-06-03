@@ -1,4 +1,4 @@
-export type Role = "admin" | "manager" | "supervisor" | "inventory" | "production" | "quality" | "worker";
+export type Role = "admin" | "manager" | "supervisor" | "inventory" | "production" | "quality" | "maintenance" | "worker";
 
 export type AuthUser = {
   id: number;
@@ -187,6 +187,48 @@ export type Notification = {
   type: "low_stock" | "production_delay" | "task_update";
   is_read: boolean;
   created_at: string;
+};
+
+export type QualityRejection = {
+  id: number;
+  date: string;
+  shift: "A" | "B" | "C";
+  serialNumber: string;
+  machineNumber: string;
+  partName: string;
+  rejectionQuantity: number;
+  reason: string;
+  cause: string;
+  crMr: "CR" | "MR";
+  remarks: string;
+  timestamp: string;
+};
+
+export type QualityRejectionPayload = Omit<QualityRejection, "id" | "timestamp">;
+
+export type QualityRejectionListResponse = {
+  items: QualityRejection[];
+  total: number;
+};
+
+export type MaintenanceJob = {
+  id: number;
+  jobCode: string;
+  machine: string;
+  team: string;
+  priority: "High" | "Medium" | "Low";
+  status: "Pending" | "In Progress" | "Completed";
+  breakdownFrom: string;
+  breakdownTo: string;
+  reason: string;
+  dueBy: string;
+};
+
+export type MaintenanceJobPayload = Omit<MaintenanceJob, "id" | "jobCode">;
+
+export type MaintenanceJobListResponse = {
+  items: MaintenanceJob[];
+  total: number;
 };
 
 export type DashboardSummary = {

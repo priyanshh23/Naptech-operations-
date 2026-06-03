@@ -7,28 +7,9 @@ import { useEffect, useMemo, useState } from "react";
 
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { Badge, Card, PageHeader } from "@/components/ui";
-import { getDashboardSummary, getInventoryLogs, getNotifications, getProductionEntries } from "@/lib/api";
+import { getDashboardSummary, getInventoryLogs, getMaintenanceJobs, getNotifications, getProductionEntries, getQualityRejections } from "@/lib/api";
 import { formatDate, formatDateTime } from "@/lib/format";
-import type { InventoryEntry, Notification, ProductionEntry } from "@/lib/types";
-
-type LocalQualityRow = {
-  id: string;
-  date: string;
-  machineNumber: string;
-  partName: string;
-  reason: string;
-  cause: string;
-  crMr: string;
-};
-
-type LocalMaintenanceRow = {
-  id: string;
-  machine: string;
-  team: string;
-  reason: string;
-  priority: string;
-  status: string;
-};
+import type { InventoryEntry, MaintenanceJob, Notification, ProductionEntry, QualityRejection } from "@/lib/types";
 
 type OverviewResult = {
   title: string;
@@ -41,8 +22,8 @@ export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [inventory, setInventory] = useState<InventoryEntry[]>([]);
   const [production, setProduction] = useState<ProductionEntry[]>([]);
-  const [quality, setQuality] = useState<LocalQualityRow[]>([]);
-  const [maintenance, setMaintenance] = useState<LocalMaintenanceRow[]>([]);
+  const [quality, setQuality] = useState<QualityRejection[]>([]);
+  const [maintenance, setMaintenance] = useState<MaintenanceJob[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [overview, setOverview] = useState<OverviewResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,9 +42,11 @@ export default function SearchPage() {
 
     try {
       const normalized = term.toLowerCase();
-      const [inventoryResponse, productionResponse, notificationResponse, dashboardResponse] = await Promise.all([
+      const [inventoryResponse, productionResponse, qualityResponse, maintenanceResponse, notificationResponse, dashboardResponse] = await Promise.all([
         getInventoryLogs({ page: 1, page_size: 8, search: term || undefined }),
         getProductionEntries({ search: term || undefined }),
+        getQualityRejections({ search: term || undefined }),
+        getMaintenanceJobs({ search: term || undefined }),
         getNotifications(),
         getDashboardSummary(),
       ]);
@@ -75,8 +58,8 @@ export default function SearchPage() {
           .filter((item) => [item.message, item.type, item.created_at].some((value) => value.toLowerCase().includes(normalized)))
           .slice(0, 8),
       );
-      setQuality(readQualityRows(normalized).slice(0, 8));
-      setMaintenance(readMaintenanceRows(normalized).slice(0, 8));
+      setQuality(qualityResponse.items.slice(0, 8));
+      setMaintenance(maintenanceResponse.items.slice(0, 8));
       setOverview(buildOverviewResults(normalized, dashboardResponse));
     } catch (error) {
       setError(error instanceof Error ? error.message : "Search failed. Please try again.");
@@ -188,7 +171,7 @@ function ProductionSection({ items, query }: Readonly<{ items: ProductionEntry[]
   );
 }
 
-function QualitySection({ items, query }: Readonly<{ items: LocalQualityRow[]; query: string }>) {
+function QualitySection({ items, query }: Readonly<{ items: QualityRejection[]; query: string }>) {
   return (
     <SearchBlock href={`/quality?search=${encodeURIComponent(query)}`} icon={<Shield size={18} />} title="Quality">
       {items.map((item) => (
@@ -204,7 +187,7 @@ function QualitySection({ items, query }: Readonly<{ items: LocalQualityRow[]; q
   );
 }
 
-function MaintenanceSection({ items, query }: Readonly<{ items: LocalMaintenanceRow[]; query: string }>) {
+function MaintenanceSection({ items, query }: Readonly<{ items: MaintenanceJob[]; query: string }>) {
   return (
     <SearchBlock href={`/maintenance?search=${encodeURIComponent(query)}`} icon={<Wrench size={18} />} title="Maintenance">
       {items.map((item) => (
@@ -275,25 +258,6 @@ function ResultRow({ badge, description, href, title }: Readonly<{ badge: string
       <Badge tone="info">{badge}</Badge>
     </Link>
   );
-}
-
-function readQualityRows(query: string): LocalQualityRow[] {
-  return filterLocalRows<LocalQualityRow>("naptech_quality_rejection_rows", query, ["id", "date", "machineNumber", "partName", "reason", "cause", "crMr"]);
-}
-
-function readMaintenanceRows(query: string): LocalMaintenanceRow[] {
-  return filterLocalRows<LocalMaintenanceRow>("naptech_maintenance_jobs", query, ["id", "machine", "team", "reason", "priority", "status"]);
-}
-
-function filterLocalRows<T extends Record<string, unknown>>(key: string, query: string, fields: Array<keyof T>) {
-  try {
-    const rows = JSON.parse(window.localStorage.getItem(key) || "[]") as T[];
-    if (!Array.isArray(rows)) return [];
-    if (!query) return rows;
-    return rows.filter((row) => fields.some((field) => String(row[field] ?? "").toLowerCase().includes(query)));
-  } catch {
-    return [];
-  }
 }
 
 function buildOverviewResults(query: string, summary: Awaited<ReturnType<typeof getDashboardSummary>>): OverviewResult[] {

@@ -3,7 +3,7 @@
 import { ChevronLeft, ChevronRight, Download, FileText, Loader2, NotebookPen, Pencil, Rows3, Save, Search, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AccessDenied } from "@/components/dashboard/access-denied";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
@@ -38,6 +38,7 @@ export default function InventoryEntryPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const deletedEntryIdsRef = useRef<Set<number>>(new Set());
   const { isReady: isUserReady, user: currentUser } = useStoredUser();
   const canDelete = canDeleteEntries(currentUser);
   const canAccess = canUseDepartment(currentUser, "inventory");
@@ -104,7 +105,7 @@ export default function InventoryEntryPage() {
         }),
       ]);
       setSummary(inventorySummary);
-      setRecentEntries(inventoryEntries.items);
+      setRecentEntries(withoutDeletedIds(inventoryEntries.items, deletedEntryIdsRef.current));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to load inventory workflow data.";
       setError(message);
@@ -121,11 +122,11 @@ export default function InventoryEntryPage() {
 
     try {
       if (editingId) {
-        const savedEntry = await updateInventoryEntry(editingId, {
-          ...form,
-          part_name: form.part_name.trim(),
-          remarks: form.remarks?.trim() || null,
-        });
+        const originalEntry = recentEntries.find((entry) => entry.id === editingId);
+        const savedEntry = await updateInventoryEntry(
+          editingId,
+          buildInventoryUpdatePayload(form, originalEntry),
+        );
         setRecentEntries((current) => [savedEntry, ...current.filter((entry) => entry.id !== savedEntry.id)].slice(0, 50));
         setEditingId(null);
         setForm({ ...initialForm, date: form.date });
@@ -163,11 +164,17 @@ export default function InventoryEntryPage() {
     setError("");
     setSuccessMessage("");
 
+    const previousEntries = recentEntries;
+    deletedEntryIdsRef.current.add(entry.id);
+    setRecentEntries((current) => current.filter((item) => item.id !== entry.id));
+
     try {
       await deleteInventoryEntry(entry.id);
       setSuccessMessage("Inventory entry deleted and balances recalculated.");
-      await loadPageData();
+      void loadPageData();
     } catch (error) {
+      deletedEntryIdsRef.current.delete(entry.id);
+      setRecentEntries(previousEntries);
       const message = error instanceof Error ? error.message : "Entry could not be deleted.";
       setError(message);
     }
@@ -575,6 +582,39 @@ export default function InventoryEntryPage() {
       ) : null}
     </DashboardShell>
   );
+}
+
+function withoutDeletedIds<T extends { id: number }>(items: T[], deletedIds: Set<number>): T[] {
+  return items.filter((item) => !deletedIds.has(item.id));
+}
+
+function buildInventoryUpdatePayload(form: InventoryEntryPayload, originalEntry?: InventoryEntry): Partial<InventoryEntryPayload> {
+  const normalizedForm: InventoryEntryPayload = {
+    date: form.date.slice(0, 10),
+    part_name: form.part_name.trim(),
+    schedule_quantity: Number(form.schedule_quantity || 0),
+    in_quantity: Number(form.in_quantity || 0),
+    out_quantity: Number(form.out_quantity || 0),
+    rejection_quantity: Number(form.rejection_quantity || 0),
+    remarks: form.remarks?.trim() || null,
+  };
+
+  if (!originalEntry) {
+    return normalizedForm;
+  }
+
+  const payload: Partial<InventoryEntryPayload> = {};
+  if (normalizedForm.date !== originalEntry.date.slice(0, 10)) payload.date = normalizedForm.date;
+  if (normalizedForm.part_name !== originalEntry.part_name) payload.part_name = normalizedForm.part_name;
+  if (normalizedForm.schedule_quantity !== originalEntry.schedule_quantity) payload.schedule_quantity = normalizedForm.schedule_quantity;
+  if (normalizedForm.in_quantity !== originalEntry.in_quantity) payload.in_quantity = normalizedForm.in_quantity;
+  if (normalizedForm.out_quantity !== originalEntry.out_quantity) payload.out_quantity = normalizedForm.out_quantity;
+  if (normalizedForm.rejection_quantity !== originalEntry.rejection_quantity) payload.rejection_quantity = normalizedForm.rejection_quantity;
+
+  const originalRemarks = originalEntry.remarks?.trim() || null;
+  if (normalizedForm.remarks !== originalRemarks) payload.remarks = normalizedForm.remarks;
+
+  return payload;
 }
 
 const inventoryEntryExportColumns = [

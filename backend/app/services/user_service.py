@@ -10,7 +10,7 @@ from app.utils.security import hash_password, verify_password
 
 
 def get_user_by_email(db: Session, email: str) -> Optional[User]:
-    return db.scalar(select(User).where(User.email == email))
+    return db.scalar(select(User).where(User.email == email.strip().lower()))
 
 
 def create_user(db: Session, payload: RegisterRequest) -> User:
@@ -20,7 +20,7 @@ def create_user(db: Session, payload: RegisterRequest) -> User:
 
     user = User(
         name=payload.name,
-        email=payload.email,
+        email=str(payload.email).strip().lower(),
         password=hash_password(payload.password),
         role=payload.role,
     )

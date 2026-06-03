@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight, Download, FileText, Loader2, Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -62,6 +62,7 @@ export default function ProductionPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const deletedEntryIdsRef = useRef<Set<number>>(new Set());
   const { isReady: isUserReady, user: currentUser } = useStoredUser();
   const canDelete = canDeleteEntries(currentUser);
   const canAccess = canUseDepartment(currentUser, "production");
@@ -132,7 +133,7 @@ export default function ProductionPage() {
         getProductionSummary(params),
         getMachineAnalytics(params),
       ]);
-      setEntries(entryResponse.items);
+      setEntries(withoutDeletedIds(entryResponse.items, deletedEntryIdsRef.current));
       setSummary(summaryResponse);
       setMachineAnalytics(analyticsResponse);
     } catch (error) {
@@ -248,11 +249,17 @@ export default function ProductionPage() {
 
     setError("");
     setMessage("");
+    const previousEntries = entries;
+    deletedEntryIdsRef.current.add(entry.id);
+    setEntries((current) => current.filter((item) => item.id !== entry.id));
+
     try {
       await deleteProductionEntry(entry.id);
       setMessage("Production entry deleted.");
-      await loadProductionData();
+      void loadProductionData();
     } catch (error) {
+      deletedEntryIdsRef.current.delete(entry.id);
+      setEntries(previousEntries);
       setError(error instanceof Error ? error.message : "Production entry could not be deleted.");
     }
   }
@@ -839,4 +846,8 @@ function getEfficiency(actual: number, target: number) {
 
 function isNumericField(field: keyof ProductionEntryPayload) {
   return ["cycle_time_seconds", "target_per_hour", "daily_target", "actual_production"].includes(field);
+}
+
+function withoutDeletedIds<T extends { id: number }>(items: T[], deletedIds: Set<number>): T[] {
+  return items.filter((item) => !deletedIds.has(item.id));
 }

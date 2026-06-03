@@ -27,6 +27,8 @@ database_url = _resolve_database_url()
 engine_kwargs = {"pool_pre_ping": True}
 if database_url.startswith("sqlite"):
     engine_kwargs["connect_args"] = {"check_same_thread": False}
+elif database_url.startswith("postgresql"):
+    engine_kwargs["connect_args"] = {"prepare_threshold": None}
 
 engine = create_engine(database_url, **engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

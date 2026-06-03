@@ -14,6 +14,7 @@ class UserRole(str, Enum):
     INVENTORY = "inventory"
     PRODUCTION = "production"
     QUALITY = "quality"
+    MAINTENANCE = "maintenance"
     WORKER = "worker"
 
 

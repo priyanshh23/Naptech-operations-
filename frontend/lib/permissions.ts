@@ -1,13 +1,23 @@
 import type { AuthUser, Role } from "@/lib/types";
 import { useEffect, useState } from "react";
 
-const deleteRoles: Role[] = ["manager"];
+const fullAccessEmails = new Set(["priyanshgupta9877@gmail.com", "naptechprecision@gmail.com"]);
+
+export function hasFullAccessEmail(user: AuthUser | null): boolean {
+  return Boolean(user && fullAccessEmails.has(user.email.trim().toLowerCase()));
+}
 
 export function getStoredUser(): AuthUser | null {
   if (typeof window === "undefined") return null;
 
   try {
-    return JSON.parse(window.localStorage.getItem("naptech_user") || "null") as AuthUser | null;
+    const user = JSON.parse(window.localStorage.getItem("naptech_user") || "null") as AuthUser | null;
+    if (user && hasFullAccessEmail(user) && user.role !== "manager") {
+      const upgradedUser = { ...user, role: "manager" as Role };
+      window.localStorage.setItem("naptech_user", JSON.stringify(upgradedUser));
+      return upgradedUser;
+    }
+    return user;
   } catch {
     return null;
   }
@@ -26,14 +36,11 @@ export function useStoredUser() {
 }
 
 export function canDeleteEntries(user: AuthUser | null): boolean {
-  return Boolean(user && deleteRoles.includes(user.role));
+  return hasFullAccessEmail(user);
 }
 
-export function canUseDepartment(user: AuthUser | null, department: "inventory" | "production" | "quality" | "maintenance"): boolean {
-  if (!user) return false;
-  if (["admin", "manager", "supervisor"].includes(user.role)) return true;
-  if (department === "maintenance") return false;
-  return user.role === department;
+export function canUseDepartment(user: AuthUser | null, _department: "inventory" | "production" | "quality" | "maintenance"): boolean {
+  return hasFullAccessEmail(user);
 }
 
 export function roleLabel(role: Role): string {

@@ -2,35 +2,18 @@
 
 import { ChevronLeft, ChevronRight, Download, FileText, Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AccessDenied } from "@/components/dashboard/access-denied";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { Badge, Button, Card, PageHeader } from "@/components/ui";
+import { createMaintenanceJob, deleteMaintenanceJob, getMaintenanceJobs, updateMaintenanceJob } from "@/lib/api";
 import { downloadExcel, printPdf } from "@/lib/export-utils";
 import { formatDateTime } from "@/lib/format";
 import { canDeleteEntries, canUseDepartment, useStoredUser } from "@/lib/permissions";
+import type { MaintenanceJob, MaintenanceJobPayload } from "@/lib/types";
 
-type MaintenanceJob = {
-  id: string;
-  machine: string;
-  team: string;
-  priority: "High" | "Medium" | "Low";
-  status: "Pending" | "In Progress" | "Completed";
-  breakdownFrom: string;
-  breakdownTo: string;
-  reason: string;
-  dueBy: string;
-};
-
-const storageKey = "naptech_maintenance_jobs";
 const PAGE_SIZE = 10;
-
-const defaultMaintenanceJobs: MaintenanceJob[] = [
-  { id: "MT-104", machine: "CNC-12", team: "Mechanical", priority: "High", status: "In Progress", breakdownFrom: "2026-05-27T13:20:00.000Z", breakdownTo: "2026-05-27T15:00:00.000Z", reason: "Spindle vibration", dueBy: "2026-05-27T15:00:00.000Z" },
-  { id: "MT-105", machine: "Press-07", team: "Electrical", priority: "Medium", status: "Pending", breakdownFrom: "2026-05-27T16:45:00.000Z", breakdownTo: "2026-05-27T18:00:00.000Z", reason: "Panel trip", dueBy: "2026-05-27T18:00:00.000Z" },
-  { id: "MT-106", machine: "Conveyor-03", team: "Utilities", priority: "Low", status: "Completed", breakdownFrom: "2026-05-27T09:15:00.000Z", breakdownTo: "2026-05-27T10:00:00.000Z", reason: "Belt alignment", dueBy: "2026-05-27T10:00:00.000Z" },
-];
 
 const initialForm = {
   machine: "",
@@ -44,12 +27,14 @@ const initialForm = {
 };
 
 export default function MaintenancePage() {
-  const [maintenanceJobs, setMaintenanceJobs] = useState<MaintenanceJob[]>(defaultMaintenanceJobs);
+  const [maintenanceJobs, setMaintenanceJobs] = useState<MaintenanceJob[]>([]);
   const [form, setForm] = useState(initialForm);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const deletedJobIdsRef = useRef<Set<number>>(new Set());
   const { isReady: isUserReady, user: currentUser } = useStoredUser();
   const canDelete = canDeleteEntries(currentUser);
   const canAccess = canUseDepartment(currentUser, "maintenance");
@@ -58,7 +43,7 @@ export default function MaintenancePage() {
     if (!query) return maintenanceJobs;
     return maintenanceJobs.filter((job) =>
       [
-        job.id,
+        job.jobCode,
         job.machine,
         job.team,
         job.priority,
@@ -78,16 +63,7 @@ export default function MaintenancePage() {
     if (initialSearch) {
       setSearch(initialSearch);
     }
-
-    const savedRows = window.localStorage.getItem(storageKey);
-    if (!savedRows) return;
-
-    try {
-      const parsedRows = JSON.parse(savedRows) as Array<Partial<MaintenanceJob>>;
-      setMaintenanceJobs(parsedRows.map(normalizeMaintenanceJob));
-    } catch {
-      setMaintenanceJobs(defaultMaintenanceJobs);
-    }
+    void loadMaintenanceJobs();
   }, []);
 
   useEffect(() => {
@@ -110,40 +86,47 @@ export default function MaintenancePage() {
     );
   }
 
-  function saveRows(rows: MaintenanceJob[]) {
-    setMaintenanceJobs(rows);
-    window.localStorage.setItem(storageKey, JSON.stringify(rows));
+  async function loadMaintenanceJobs() {
+    setError("");
+    try {
+      const response = await getMaintenanceJobs();
+      setMaintenanceJobs(withoutDeletedIds(response.items, deletedJobIdsRef.current));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to load maintenance jobs.");
+    }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+    setError("");
 
     if (editingId) {
-      const rows = maintenanceJobs.map((job) =>
-        job.id === editingId
-          ? {
-              ...job,
-              machine: form.machine.trim(),
-              team: form.team.trim(),
-              priority: form.priority,
-              status: form.status,
-              breakdownFrom: new Date(form.breakdownFrom).toISOString(),
-              breakdownTo: new Date(form.breakdownTo).toISOString(),
-              reason: form.reason.trim(),
-              dueBy: new Date(form.dueBy).toISOString(),
-            }
-          : job,
-      );
-      saveRows(rows);
-      setEditingId(null);
-      setForm(initialForm);
-      setMessage("Maintenance job updated.");
+      try {
+        await updateMaintenanceJob(editingId, normalizeForm());
+        await loadMaintenanceJobs();
+        setEditingId(null);
+        setForm(initialForm);
+        setMessage("Maintenance job updated.");
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "Maintenance job could not be updated.");
+      }
       return;
     }
 
-    const newRow: MaintenanceJob = {
-      id: `MT-${Date.now().toString().slice(-5)}`,
+    try {
+      await createMaintenanceJob(normalizeForm());
+      await loadMaintenanceJobs();
+      setPage(1);
+      setForm(initialForm);
+      setMessage("Maintenance job saved to the table.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Maintenance job could not be saved.");
+    }
+  }
+
+  function normalizeForm(): MaintenanceJobPayload {
+    return {
       machine: form.machine.trim(),
       team: form.team.trim(),
       priority: form.priority,
@@ -153,11 +136,6 @@ export default function MaintenancePage() {
       reason: form.reason.trim(),
       dueBy: new Date(form.dueBy).toISOString(),
     };
-
-    saveRows([newRow, ...maintenanceJobs]);
-    setPage(1);
-    setForm(initialForm);
-    setMessage("Maintenance job saved to the table.");
   }
 
   function startEdit(job: MaintenanceJob) {
@@ -172,17 +150,31 @@ export default function MaintenancePage() {
       reason: job.reason,
       dueBy: job.dueBy.slice(0, 16),
     });
-    setMessage(`Editing ${job.id}.`);
+    setMessage(`Editing ${job.jobCode}.`);
   }
 
-  function handleDelete(job: MaintenanceJob) {
-    const confirmed = window.confirm(`Delete maintenance job ${job.id}?`);
+  async function handleDelete(job: MaintenanceJob) {
+    const confirmed = window.confirm(`Delete maintenance job ${job.jobCode}?`);
     if (!confirmed) return;
 
-    const rows = maintenanceJobs.filter((item) => item.id !== job.id);
-    saveRows(rows);
-    setPage((current) => Math.min(current, Math.max(1, Math.ceil(rows.length / PAGE_SIZE))));
-    setMessage("Maintenance job deleted.");
+    setError("");
+    const previousJobs = maintenanceJobs;
+    deletedJobIdsRef.current.add(job.id);
+    setMaintenanceJobs((current) => {
+      const nextJobs = current.filter((item) => item.id !== job.id);
+      setPage((currentPage) => Math.min(currentPage, Math.max(1, Math.ceil(nextJobs.length / PAGE_SIZE))));
+      return nextJobs;
+    });
+
+    try {
+      await deleteMaintenanceJob(job.id);
+      void loadMaintenanceJobs();
+      setMessage("Maintenance job deleted.");
+    } catch (error) {
+      deletedJobIdsRef.current.delete(job.id);
+      setMaintenanceJobs(previousJobs);
+      setError(error instanceof Error ? error.message : "Maintenance job could not be deleted.");
+    }
   }
 
   function exportExcel() {
@@ -261,6 +253,7 @@ export default function MaintenancePage() {
         </form>
 
         {message ? <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{message}</p> : null}
+        {error ? <p className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</p> : null}
       </Card>
 
       <Card>
@@ -307,7 +300,7 @@ export default function MaintenancePage() {
             <tbody>
               {paginatedJobs.map((job) => (
                 <tr className="border-b border-border last:border-0" key={job.id}>
-                  <td className="py-4 pr-4 font-semibold text-slate-950">{job.id}</td>
+                  <td className="py-4 pr-4 font-semibold text-slate-950">{job.jobCode}</td>
                   <td className="py-4 pr-4 text-slate-700">{job.machine}</td>
                   <td className="py-4 pr-4 text-slate-700">{job.team}</td>
                   <td className="py-4 pr-4 text-slate-700">{formatDateTime(job.breakdownFrom)}</td>
@@ -336,7 +329,7 @@ export default function MaintenancePage() {
                     {canDelete ? (
                       <button
                         className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-red-100 px-3 text-xs font-semibold text-red-600 transition hover:bg-red-50"
-                        onClick={() => handleDelete(job)}
+                        onClick={() => void handleDelete(job)}
                         type="button"
                       >
                         <Trash2 size={14} />
@@ -433,8 +426,12 @@ export default function MaintenancePage() {
   );
 }
 
+function withoutDeletedIds<T extends { id: number }>(items: T[], deletedIds: Set<number>): T[] {
+  return items.filter((item) => !deletedIds.has(item.id));
+}
+
 const maintenanceExportColumns = [
-  { label: "Job ID", value: (row: MaintenanceJob) => row.id },
+  { label: "Job ID", value: (row: MaintenanceJob) => row.jobCode },
   { label: "Machine", value: (row: MaintenanceJob) => row.machine },
   { label: "Team", value: (row: MaintenanceJob) => row.team },
   { label: "Breakdown From", value: (row: MaintenanceJob) => formatDateTime(row.breakdownFrom) },
@@ -444,21 +441,6 @@ const maintenanceExportColumns = [
   { label: "Status", value: (row: MaintenanceJob) => row.status },
   { label: "Due By", value: (row: MaintenanceJob) => formatDateTime(row.dueBy) },
 ];
-
-function normalizeMaintenanceJob(row: Partial<MaintenanceJob>): MaintenanceJob {
-  const dueBy = row.dueBy || new Date().toISOString();
-  return {
-    id: row.id || `MT-${Date.now().toString().slice(-5)}`,
-    machine: row.machine || "",
-    team: row.team || "",
-    priority: row.priority || "Medium",
-    status: row.status || "Pending",
-    breakdownFrom: row.breakdownFrom || dueBy,
-    breakdownTo: row.breakdownTo || dueBy,
-    reason: row.reason || "Not specified",
-    dueBy,
-  };
-}
 
 function Pagination({
   count,
