@@ -1,7 +1,7 @@
 "use client";
 
 import { Activity, AlertTriangle, Boxes, CalendarDays, CheckCircle2, Download, Factory, FileText, Loader2, Shield, Wrench } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ActivityTimeline } from "@/components/dashboard/activity-timeline";
 import { AlertsPanel } from "@/components/dashboard/alerts-panel";
@@ -14,7 +14,7 @@ import { AccessDenied } from "@/components/dashboard/access-denied";
 import { Card } from "@/components/ui";
 import { getDashboardSummary, getMaintenanceJobs, getQualityRejections } from "@/lib/api";
 import { downloadExcelSections, printPdfSections } from "@/lib/export-utils";
-import { hasFullAccessEmail, useStoredUser } from "@/lib/permissions";
+import { useStoredUser } from "@/lib/permissions";
 import type { DashboardSummary } from "@/lib/types";
 import type {
   ActiveProductionTask,
@@ -58,15 +58,9 @@ export default function DashboardPage() {
   const [qualityRows, setQualityRows] = useState<QualityOverviewRow[]>([]);
   const [maintenanceRows, setMaintenanceRows] = useState<MaintenanceOverviewRow[]>([]);
   const { isReady, user: currentUser } = useStoredUser();
-  const canAccessDashboard = hasFullAccessEmail(currentUser);
+  const canAccessDashboard = Boolean(currentUser);
 
-  useEffect(() => {
-    if (isReady && canAccessDashboard) {
-      void loadDashboard();
-    }
-  }, [dateFrom, dateTo, isReady, canAccessDashboard]);
-
-  async function loadDepartmentRows() {
+  const loadDepartmentRows = useCallback(async () => {
     try {
       const [qualityResponse, maintenanceResponse] = await Promise.all([
         getQualityRejections(),
@@ -78,9 +72,9 @@ export default function DashboardPage() {
       setQualityRows([]);
       setMaintenanceRows([]);
     }
-  }
+  }, []);
 
-  async function loadDashboard() {
+  const loadDashboard = useCallback(async () => {
     setIsLoading(true);
     setError("");
 
@@ -99,7 +93,36 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [dateFrom, dateTo, loadDepartmentRows]);
+
+  useEffect(() => {
+    if (isReady && canAccessDashboard) {
+      void loadDashboard();
+    }
+  }, [isReady, canAccessDashboard, loadDashboard]);
+
+  useEffect(() => {
+    if (!isReady || !canAccessDashboard) return;
+
+    const refreshDashboard = () => {
+      void loadDashboard();
+    };
+    const refreshOnStorage = (event: StorageEvent) => {
+      if (event.key === "naptech_data_changed_at") {
+        refreshDashboard();
+      }
+    };
+
+    window.addEventListener("naptech:data-changed", refreshDashboard);
+    window.addEventListener("storage", refreshOnStorage);
+    window.addEventListener("focus", refreshDashboard);
+
+    return () => {
+      window.removeEventListener("naptech:data-changed", refreshDashboard);
+      window.removeEventListener("storage", refreshOnStorage);
+      window.removeEventListener("focus", refreshDashboard);
+    };
+  }, [isReady, canAccessDashboard, loadDashboard]);
 
   function getOverviewExportSections() {
     if (!summary) {
@@ -166,7 +189,7 @@ export default function DashboardPage() {
     printPdfSections("Naptech Factory OS Overview", getOverviewExportSections());
   }
 
-  const kpiMetrics: KpiMetric[] =
+  const kpiMetrics: KpiMetric[] = useMemo(() => (
     summary?.kpi_metrics.map((metric) => ({
       label: metric.label,
       value: metric.value.toLocaleString("en-IN"),
@@ -181,34 +204,38 @@ export default function DashboardPage() {
               ? CheckCircle2
               : AlertTriangle,
       sparkline: metric.sparkline,
-    })) ?? [];
+    })) ?? []
+  ), [summary]);
 
-  const inventoryCategories: InventoryCategory[] =
+  const inventoryCategories: InventoryCategory[] = useMemo(() => (
     summary?.inventory_categories.map((item) => ({
       name: item.name,
       value: item.value,
       color: item.color,
-    })) ?? [];
+    })) ?? []
+  ), [summary]);
 
-  const movementSeries: ProductionPoint[] = summary?.movement_series ?? [];
-  const alerts: AlertItem[] = summary?.alerts ?? [];
-  const lowStockItems: LowStockItem[] =
+  const movementSeries: ProductionPoint[] = useMemo(() => summary?.movement_series ?? [], [summary]);
+  const alerts: AlertItem[] = useMemo(() => summary?.alerts ?? [], [summary]);
+  const lowStockItems: LowStockItem[] = useMemo(() => (
     summary?.low_stock_items.map((item) => ({
       itemName: item.item_name,
       sku: item.sku,
       currentStock: item.current_stock,
       minimumStock: item.minimum_stock,
       status: item.status,
-    })) ?? [];
-  const activeTasks: ActiveProductionTask[] =
+    })) ?? []
+  ), [summary]);
+  const activeTasks: ActiveProductionTask[] = useMemo(() => (
     summary?.active_tasks_table.map((task) => ({
       taskName: task.task_name,
       line: task.line,
       progress: task.progress,
       assignedWorker: task.assigned_worker,
       status: task.status,
-    })) ?? [];
-  const recentActivities: RecentActivity[] = summary?.recent_activities ?? [];
+    })) ?? []
+  ), [summary]);
+  const recentActivities: RecentActivity[] = useMemo(() => summary?.recent_activities ?? [], [summary]);
   const qualityTotals = useMemo(
     () => ({
       rejection: qualityRows.reduce((sum, row) => sum + Number(row.rejectionQuantity || 0), 0),
@@ -225,7 +252,7 @@ export default function DashboardPage() {
     }),
     [maintenanceRows],
   );
-  const departmentOverview: DepartmentOverview[] = [
+  const departmentOverview: DepartmentOverview[] = useMemo(() => [
     {
       department: "Inventory",
       primaryMetric: "Total Balance",
@@ -274,7 +301,7 @@ export default function DashboardPage() {
       color: "#A855F7",
       bars: [maintenanceTotals.open, maintenanceTotals.high, maintenanceTotals.completed],
     },
-  ];
+  ], [maintenanceTotals, movementSeries, qualityTotals, summary]);
 
   if (isReady && !canAccessDashboard) {
     return (
@@ -288,7 +315,7 @@ export default function DashboardPage() {
     <DashboardShell
       headerActions={
         <>
-          <div className="grid gap-3 sm:grid-cols-[180px_180px_auto_auto_auto_auto]">
+          <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:w-auto xl:grid-cols-[160px_160px_auto_auto_auto_auto]">
             <label className="block">
               <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
                 <CalendarDays size={13} />
@@ -314,7 +341,7 @@ export default function DashboardPage() {
               />
             </label>
             <button
-              className="h-11 self-end rounded-xl border border-border bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+              className="h-11 w-full self-end rounded-xl border border-border bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
               disabled={isLoading}
               onClick={() => void loadDashboard()}
               type="button"
@@ -322,7 +349,7 @@ export default function DashboardPage() {
               {isLoading ? "Refreshing..." : "Refresh"}
             </button>
             <button
-              className="h-11 self-end rounded-xl border border-border bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+              className="h-11 w-full self-end rounded-xl border border-border bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
               disabled={!dateFrom && !dateTo}
               onClick={() => {
                 setDateFrom("");
@@ -333,7 +360,7 @@ export default function DashboardPage() {
               Clear Range
             </button>
             <button
-              className="flex h-11 self-end items-center justify-center gap-2 rounded-xl bg-[#19C93B] px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(25,201,59,0.25)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex h-11 w-full self-end items-center justify-center gap-2 rounded-xl bg-[#19C93B] px-4 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(25,201,59,0.25)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={!summary}
               onClick={exportExcelReport}
               type="button"
@@ -342,7 +369,7 @@ export default function DashboardPage() {
               Excel Report
             </button>
             <button
-              className="flex h-11 self-end items-center justify-center gap-2 rounded-xl border border-border bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+              className="flex h-11 w-full self-end items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
               disabled={!summary}
               onClick={exportPdfReport}
               type="button"
@@ -370,7 +397,7 @@ export default function DashboardPage() {
         </Card>
       ) : summary ? (
         <>
-          <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {kpiMetrics.map((metric, index) => (
               <KpiCard index={index} key={metric.label} metric={metric} />
             ))}
@@ -383,24 +410,24 @@ export default function DashboardPage() {
                 A quick department-wise view of where inventory, production, quality, and maintenance stand.
               </p>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {departmentOverview.map((item, index) => (
                 <DepartmentOverviewCard item={item} key={item.department} delay={0.08 + index * 0.04} />
               ))}
             </div>
           </section>
 
-          <section className="mt-5 grid gap-5 xl:grid-cols-12">
+          <section className="mt-4 grid gap-4 xl:grid-cols-12">
             <InventoryOverview data={inventoryCategories} totalBalance={summary.total_inventory} />
             <ProductionOverview data={movementSeries} />
           </section>
 
-          <section className="mt-5 grid gap-5 lg:grid-cols-12">
+          <section className="mt-4 grid gap-4 lg:grid-cols-12">
             <LowStockTable items={lowStockItems} />
             <ActiveTasksTable tasks={activeTasks} />
           </section>
 
-          <section className="mt-5 grid gap-5 xl:grid-cols-[1fr_360px]">
+          <section className="mt-4 grid gap-4 xl:grid-cols-[1fr_360px]">
             <ActivityTimeline items={recentActivities} />
             <AlertsPanel alerts={alerts} />
           </section>

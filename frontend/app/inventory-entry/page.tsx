@@ -158,6 +158,8 @@ export default function InventoryEntryPage() {
   }
 
   async function handleDelete(entry: InventoryEntry) {
+    if (deletedEntryIdsRef.current.has(entry.id)) return;
+
     const confirmed = window.confirm(`Delete inventory entry for ${entry.part_name} on ${formatDate(entry.date)}?`);
     if (!confirmed) return;
 
@@ -439,7 +441,7 @@ export default function InventoryEntryPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[940px] border-collapse text-left text-sm">
+          <table className="data-table w-full min-w-[940px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs uppercase text-muted-foreground">
                 <th className="py-3 pr-4">Date</th>
@@ -458,7 +460,7 @@ export default function InventoryEntryPage() {
               {paginatedEntries.map((entry) => (
                 <tr className="border-b border-border last:border-0" key={entry.id}>
                   <td className="py-4 pr-4 text-slate-700">{formatDate(entry.date)}</td>
-                  <td className="py-4 pr-4 font-medium text-slate-950">{entry.part_name}</td>
+                  <td className="wrap-cell py-4 pr-4 font-medium text-slate-950">{entry.part_name}</td>
                   <td className="py-4 pr-4 text-slate-700">{entry.schedule_quantity.toLocaleString("en-IN")}</td>
                   <td className="py-4 pr-4 text-slate-700">{entry.in_quantity.toLocaleString("en-IN")}</td>
                   <td className="py-4 pr-4 text-slate-700">{entry.out_quantity.toLocaleString("en-IN")}</td>
@@ -466,7 +468,7 @@ export default function InventoryEntryPage() {
                   <td className="py-4 pr-4 font-semibold text-slate-950">{entry.balance_quantity.toLocaleString("en-IN")}</td>
                   <td className="py-4 pr-4 text-slate-700">{entry.created_by}</td>
                   <td className="py-4 pr-4 text-slate-700">{formatDateTime(entry.created_at)}</td>
-                  <td className="py-4 pr-4">
+                  <td className="table-actions py-4 pr-4">
                     <button
                       className="mr-2 inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                       onClick={() => startEdit(entry)}

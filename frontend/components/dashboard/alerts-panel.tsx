@@ -14,7 +14,7 @@ const alertMeta = {
 export function AlertsPanel({ alerts }: Readonly<{ alerts: AlertItem[] }>) {
   return (
     <DashboardCard delay={0.28}>
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#19C93B]">Alerts</p>
           <h2 className="mt-1 text-lg font-semibold text-[#111827] dark:text-white">Recent Alerts</h2>
@@ -27,9 +27,9 @@ export function AlertsPanel({ alerts }: Readonly<{ alerts: AlertItem[] }>) {
           const meta = alertMeta[alert.type];
           const Icon = meta.icon;
           return (
-            <div className="rounded-2xl bg-slate-50 p-4" key={alert.title}>
+            <div className="rounded-2xl bg-slate-50 p-3 sm:p-4" key={alert.title}>
               <div className="flex gap-3">
-                <div className={cn("flex h-10 w-10 items-center justify-center rounded-2xl", meta.bg, meta.color)}>
+                <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", meta.bg, meta.color)}>
                   <Icon size={18} />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -37,7 +37,7 @@ export function AlertsPanel({ alerts }: Readonly<{ alerts: AlertItem[] }>) {
                   <p className="text-sm font-semibold text-[#111827] dark:text-white">{alert.title}</p>
                     <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", meta.dot)} />
                   </div>
-                  <p className="mt-1 text-sm leading-6 text-[#6B7280]">{alert.description}</p>
+                  <p className="mt-1 break-words text-sm leading-6 text-[#6B7280]">{alert.description}</p>
                   <p className="mt-2 text-xs font-medium text-slate-400">{alert.time}</p>
                 </div>
               </div>

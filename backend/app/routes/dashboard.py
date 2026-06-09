@@ -6,7 +6,7 @@ from fastapi import Query
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.middleware.auth import require_full_access
+from app.middleware.auth import get_current_user
 from app.models.user import User
 from app.schemas.dashboard import DashboardSummary
 from app.services.dashboard_service import get_dashboard_summary
@@ -19,6 +19,6 @@ def get_dashboard(
     date_from: Optional[date] = Query(default=None),
     date_to: Optional[date] = Query(default=None),
     db: Session = Depends(get_db),
-    _: User = Depends(require_full_access),
+    _: User = Depends(get_current_user),
 ) -> DashboardSummary:
     return get_dashboard_summary(db, date_from, date_to)

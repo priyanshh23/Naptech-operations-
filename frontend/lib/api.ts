@@ -24,6 +24,8 @@ import type {
 
 const configuredApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 const proxyBaseUrl = "/api/backend";
+const dataChangedEventName = "naptech:data-changed";
+const dataChangedStorageKey = "naptech_data_changed_at";
 
 function clearStoredSession() {
   if (typeof window === "undefined") {
@@ -49,6 +51,16 @@ function getApiBaseUrls(): string[] {
   }
 
   return [configuredApiBaseUrl || "http://127.0.0.1:8000", "http://localhost:8000"];
+}
+
+function notifyDataChanged(path: string, method: string): void {
+  if (typeof window === "undefined" || method === "GET" || path.startsWith("/auth/")) {
+    return;
+  }
+
+  const timestamp = String(Date.now());
+  window.localStorage.setItem(dataChangedStorageKey, timestamp);
+  window.dispatchEvent(new CustomEvent(dataChangedEventName, { detail: { path, timestamp } }));
 }
 
 function isNetworkErrorMessage(message: string): boolean {
@@ -118,6 +130,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       });
 
       if (!response.ok) {
+        if (response.status === 404 && init?.method === "DELETE") {
+          notifyDataChanged(path, init.method);
+          return undefined as T;
+        }
+
         let detail = "";
         const raw = await response.text();
         if (raw) {
@@ -140,10 +157,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       }
 
       if (response.status === 204) {
+        notifyDataChanged(path, init?.method || "GET");
         return undefined as T;
       }
 
-      return (await response.json()) as T;
+      const payload = (await response.json()) as T;
+      notifyDataChanged(path, init?.method || "GET");
+      return payload;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (!isNetworkErrorMessage(message)) {

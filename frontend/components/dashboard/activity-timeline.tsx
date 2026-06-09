@@ -22,19 +22,19 @@ export function ActivityTimeline({ items }: Readonly<{ items: RecentActivity[] }
         <Link className="text-sm font-semibold text-[#19C93B]" href="/notifications">View all</Link>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {items.map((item) => {
           const Icon = activityIcons[item.type];
           return (
-            <div className="relative rounded-3xl bg-slate-50 p-4" key={`${item.title}-${item.time}`}>
-              <div className="mb-5 flex items-center justify-between">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#19C93B]/10 text-[#19C93B]">
+            <div className="relative rounded-2xl bg-slate-50 p-3 sm:p-4" key={`${item.title}-${item.time}`}>
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#19C93B]/10 text-[#19C93B]">
                   <Icon size={19} />
                 </div>
                 <span className="text-xs font-semibold text-[#6B7280]">{item.time}</span>
               </div>
-              <p className="font-semibold text-[#111827]">{item.title}</p>
-              <p className="mt-2 text-sm leading-6 text-[#6B7280]">{item.description}</p>
+              <p className="break-words text-sm font-semibold text-[#111827] sm:text-base">{item.title}</p>
+              <p className="mt-2 break-words text-sm leading-6 text-[#6B7280]">{item.description}</p>
             </div>
           );
         })}

@@ -244,6 +244,8 @@ export default function ProductionPage() {
   }
 
   async function handleDelete(entry: ProductionEntry) {
+    if (deletedEntryIdsRef.current.has(entry.id)) return;
+
     const confirmed = window.confirm(`Delete production entry for ${entry.machine_number} / ${entry.part_name}?`);
     if (!confirmed) return;
 
@@ -327,7 +329,22 @@ export default function ProductionPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="max-h-[430px] overflow-auto rounded-xl border border-border">
-            <table className="w-full min-w-[1280px] border-collapse text-left text-sm">
+            <table className="data-entry-table data-table w-full min-w-[1960px] border-collapse text-left text-sm">
+              <colgroup>
+                <col className="w-[110px]" />
+                <col className="w-[180px]" />
+                <col className="w-[180px]" />
+                <col className="w-[170px]" />
+                <col className="w-[170px]" />
+                <col className="w-[190px]" />
+                <col className="w-[170px]" />
+                <col className="w-[150px]" />
+                <col className="w-[150px]" />
+                <col className="w-[180px]" />
+                <col className="w-[130px]" />
+                <col className="w-[220px]" />
+                <col className="w-[100px]" />
+              </colgroup>
               <thead className="sticky top-0 z-10 bg-white dark:bg-[#07111A]">
                 <tr className="border-b border-border text-xs uppercase text-muted-foreground">
                   <th className="py-3 pr-3">Shift</th>
@@ -372,7 +389,7 @@ export default function ProductionPage() {
                       {getEfficiency(row.actual_production, row.daily_target)}%
                     </td>
                     <EditableCell field="remarks" placeholder="Delay, tool change..." row={row} updateDraft={updateDraft} />
-                    <td className="py-3 pr-3">
+                    <td className="table-actions py-3 pr-3">
                       <button
                         className="inline-flex h-9 items-center rounded-md border border-red-100 px-3 text-xs font-semibold text-red-600 transition hover:bg-red-50"
                         onClick={() => removeDraft(row.rowId)}
@@ -449,7 +466,7 @@ export default function ProductionPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1060px] border-collapse text-left text-sm">
+            <table className="data-table w-full min-w-[1060px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-xs uppercase text-muted-foreground">
                   <th className="py-3 pr-4">Date</th>
@@ -482,16 +499,16 @@ export default function ProductionPage() {
                       <td className="py-4 pr-4 text-slate-700">{entry.shift}</td>
                       <td className="py-4 pr-4 font-semibold text-slate-950">{entry.machine_number}</td>
                       <td className="py-4 pr-4 text-slate-700">{entry.part_number}</td>
-                      <td className="py-4 pr-4 text-slate-700">{entry.part_name}</td>
+                      <td className="wrap-cell py-4 pr-4 text-slate-700">{entry.part_name}</td>
                       <td className="py-4 pr-4 text-slate-700">{entry.daily_target.toLocaleString("en-IN")}</td>
                       <td className="py-4 pr-4 text-slate-700">{entry.actual_production.toLocaleString("en-IN")}</td>
-                      <td className="py-4 pr-4">
+                      <td className="table-actions py-4 pr-4">
                         <Badge tone={entry.efficiency_percent >= 100 ? "success" : entry.efficiency_percent >= 85 ? "warning" : "danger"}>
                           {entry.efficiency_percent}%
                         </Badge>
                       </td>
                       <td className="py-4 pr-4 text-slate-700">{entry.operator_name}</td>
-                      <td className="py-4 pr-4 text-slate-700">{entry.remarks || "-"}</td>
+                      <td className="wrap-cell py-4 pr-4 text-slate-700">{entry.remarks || "-"}</td>
                       <td className="py-4 pr-4">
                         <button
                           className="mr-2 inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -776,7 +793,7 @@ function EditableCell({
   return (
     <td className="py-3 pr-3">
       <input
-        className="h-10 w-full min-w-28 rounded-md border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+        className="h-10 w-full rounded-md border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
         min={type === "number" ? 0 : undefined}
         onChange={(event) => updateDraft(row.rowId, field, event.target.value)}
         placeholder={placeholder}

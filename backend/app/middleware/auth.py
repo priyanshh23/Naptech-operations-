@@ -30,8 +30,19 @@ def has_full_access_email(email: str) -> bool:
     return email.strip().lower() in FULL_ACCESS_EMAILS
 
 
+def has_full_access_role(user: User) -> bool:
+    role_value = user.role.value if hasattr(user.role, "value") else str(user.role)
+    return role_value in {UserRole.ADMIN.value, UserRole.MANAGER.value}
+
+
 def _is_email_allowed(email: str) -> bool:
-    return has_full_access_email(email)
+    normalized_email = email.strip().lower()
+    allowed_domain = settings.allowed_login_domain.strip().lower().lstrip("@")
+    return (
+        has_full_access_email(normalized_email)
+        or normalized_email in settings.login_allowlist_emails
+        or bool(allowed_domain and normalized_email.endswith(f"@{allowed_domain}"))
+    )
 
 
 def get_current_user(
@@ -60,14 +71,14 @@ def get_current_user(
 
 
 def require_full_access(current_user: User = Depends(get_current_user)) -> User:
-    if not has_full_access_email(current_user.email):
+    if not (has_full_access_email(current_user.email) or has_full_access_role(current_user)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
     return current_user
 
 
 def require_roles(*roles: UserRole) -> Callable:
     def dependency(current_user: User = Depends(get_current_user)) -> User:
-        if has_full_access_email(current_user.email):
+        if has_full_access_email(current_user.email) or has_full_access_role(current_user):
             return current_user
 
         role_value = current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)

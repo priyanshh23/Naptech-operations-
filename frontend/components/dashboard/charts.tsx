@@ -21,8 +21,8 @@ export function InventoryOverview({ data, totalBalance }: Readonly<{ data: Inven
   return (
     <DashboardCard className="overflow-hidden lg:col-span-5" delay={0.18}>
       <PanelTitle href="/inventory-logs" title="Inventory Overview" />
-      <div className="mt-4 grid gap-4 xl:grid-cols-[240px_1fr]">
-        <div className="relative h-52 min-w-0">
+      <div className="mt-4 grid gap-4 xl:grid-cols-[220px_1fr]">
+        <div className="relative h-44 min-w-0 sm:h-52">
           <ResponsiveContainer height="100%" width="100%">
             <PieChart>
               <Pie
@@ -69,7 +69,7 @@ export function ProductionOverview({ data }: Readonly<{ data: ProductionPoint[] 
   return (
     <DashboardCard className="lg:col-span-7" delay={0.22}>
       <PanelTitle href="/production" title="Production Overview" />
-      <div className="mt-5 h-64">
+      <div className="mt-4 h-52 sm:mt-5 sm:h-64">
         <ResponsiveContainer height="100%" width="100%">
           <AreaChart data={data}>
             <defs>
@@ -158,7 +158,7 @@ function ChartTooltip({
 function PanelTitle({ href, title }: Readonly<{ href: string; title: string }>) {
   return (
     <div className="flex items-center justify-between">
-      <h2 className="text-lg font-semibold tracking-normal text-[#111827] dark:text-white">{title}</h2>
+      <h2 className="text-base font-semibold tracking-normal text-[#111827] dark:text-white sm:text-lg">{title}</h2>
       <Link className="text-sm font-semibold text-[#19C93B]" href={href}>
         View all
       </Link>

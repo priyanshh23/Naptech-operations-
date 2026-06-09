@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.middleware.auth import get_current_user, require_full_access
-from app.models.user import User
+from app.middleware.auth import get_current_user, require_roles
+from app.models.user import User, UserRole
 from app.schemas.inventory import (
     InventoryBalancePreview,
     InventoryEntryCreate,
@@ -45,7 +45,7 @@ def get_inventory_entries(
 def post_inventory_entry(
     payload: InventoryEntryCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_full_access),
+    current_user: User = Depends(require_roles(UserRole.INVENTORY)),
 ) -> InventoryEntryResponse:
     return create_inventory_entry(db, payload, current_user)
 
@@ -55,7 +55,7 @@ def put_inventory_entry(
     entry_id: int,
     payload: InventoryEntryUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_full_access),
+    _: User = Depends(require_roles(UserRole.INVENTORY)),
 ) -> InventoryEntryResponse:
     return update_inventory_entry(db, entry_id, payload)
 
@@ -64,7 +64,7 @@ def put_inventory_entry(
 def remove_inventory_entry(
     entry_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_full_access),
+    _: User = Depends(require_roles(UserRole.INVENTORY)),
 ) -> None:
     delete_inventory_entry(db, entry_id)
 

@@ -24,7 +24,7 @@ import type { FormEvent, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { changePassword, getNotifications } from "@/lib/api";
 import type { Role } from "@/lib/types";
-import { canUseDepartment, roleLabel } from "@/lib/permissions";
+import { hasFullAccessEmail, canUseDepartment, roleLabel } from "@/lib/permissions";
 
 type NavItem = {
   href: string;
@@ -86,12 +86,18 @@ export function DashboardShell({
       try {
         const parsedUser = JSON.parse(savedUser) as { email?: string; name?: string; role?: string };
         const parsedEmail = parsedUser.email || "priyanshgupta9877@gmail.com";
-        const isFullAccessEmail = ["priyanshgupta9877@gmail.com", "naptechprecision@gmail.com"].includes(parsedEmail.trim().toLowerCase());
-        const parsedRole = (isFullAccessEmail ? "manager" : parsedUser.role || "manager") as Role;
+        const parsedRole = (parsedUser.role || "manager") as Role;
+        const normalizedUser = {
+          id: 0,
+          name: parsedUser.name || "Admin",
+          email: parsedEmail,
+          role: parsedRole,
+        };
+        const displayRole = hasFullAccessEmail(normalizedUser) && parsedRole !== "admin" ? "manager" : parsedRole;
         setUserName(parsedUser.name || "Admin");
         setUserEmail(parsedEmail);
-        setRole(parsedRole);
-        setUserRole(roleLabel(parsedRole));
+        setRole(displayRole);
+        setUserRole(roleLabel(displayRole));
       } catch {
         setUserName("Admin");
         setUserEmail("priyanshgupta9877@gmail.com");
@@ -178,18 +184,26 @@ export function DashboardShell({
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#F7F9FB] text-[#111827] transition-colors dark:bg-[#07111A] dark:text-slate-100">
+      {open ? (
+        <button
+          aria-label="Close navigation"
+          className="fixed inset-0 z-[35] bg-[#020B14]/70 backdrop-blur-sm lg:hidden"
+          onClick={closeSidebar}
+          type="button"
+        />
+      ) : null}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-[236px] flex-col border-r border-white/10 bg-[#020B14] text-white transition-transform duration-300 lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex w-[212px] flex-col border-r border-white/10 bg-[#020B14] text-white transition-transform duration-300 lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex h-[76px] items-center justify-between px-4">
+        <div className="flex h-[70px] items-center justify-between px-3">
           <Link className="flex items-center gap-2.5" href="/dashboard">
-            <Image alt="Naptech" className="h-10 w-10 rounded-xl object-contain" height={40} src="/logo.png" width={40} />
+            <Image alt="Naptech" className="h-12 w-12 object-contain" height={48} src="/logo.png" width={48} />
             <div>
-              <p className="text-lg font-semibold tracking-normal text-[#19C93B]">NAPTECH</p>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white">Factory OS</p>
+              <p className="text-base font-semibold tracking-normal text-[#19C93B]">NAPTECH</p>
+              <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white">Factory OS</p>
             </div>
           </Link>
           <button className="rounded-full border border-white/20 p-2 text-slate-400 lg:hidden" onClick={closeSidebar} type="button">
@@ -197,13 +211,13 @@ export function DashboardShell({
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 pb-2">
+        <nav className="flex-1 overflow-y-auto px-2.5 pb-2">
           <NavLink active={isDashboard} href="/dashboard" icon={Home} label="Overview" onClick={closeSidebar} />
           <NavGroup items={visibleOperations} label="Operations" pathname={pathname} setOpen={closeSidebar} />
           <NavGroup items={management} label="Management" pathname={pathname} setOpen={closeSidebar} />
         </nav>
 
-        <div className="m-3 rounded-xl border border-white/10 bg-white/5 p-2.5">
+        <div className="m-2.5 rounded-xl border border-white/10 bg-white/5 p-2.5">
           <div className="flex items-center gap-2.5">
             <div className="relative grid h-8 w-8 place-items-center rounded-full bg-[#19C93B] text-xs font-bold text-white">
               A
@@ -220,9 +234,9 @@ export function DashboardShell({
         </div>
       </aside>
 
-      <div className="min-w-0 overflow-x-hidden lg:pl-[236px]">
-        <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 px-4 py-3 backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-[#07111A]/90 lg:px-8 relative">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="min-w-0 overflow-x-hidden lg:pl-[212px]">
+        <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 px-3 py-3 backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-[#07111A]/90 sm:px-4 lg:px-8 relative">
+          <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-4">
               <button
                 className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-700 shadow-sm lg:hidden"
@@ -255,56 +269,34 @@ export function DashboardShell({
                   </span>
                 ) : null}
               </Link>
-              <button className="flex items-center gap-2 text-sm font-semibold text-[#087B25] dark:text-[#8BFF4D]" onClick={toggleProfile} type="button">
-                {userName.split(" ")[0]}
-                <ChevronDown size={16} />
-              </button>
+              <div className="relative">
+                <button className="flex items-center gap-2 text-sm font-semibold text-[#087B25] dark:text-[#8BFF4D]" onClick={toggleProfile} type="button">
+                  {userName.split(" ")[0]}
+                  <ChevronDown size={16} />
+                </button>
+                {profileOpen ? (
+                  <div className="absolute right-0 top-full z-[90] mt-1.5 w-24 rounded-lg border border-slate-200 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-[#151F2A]">
+                    <button className="flex min-h-8 w-full items-center rounded-md px-2.5 py-1.5 text-left text-xs font-semibold leading-none text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10" onClick={logout} type="button">
+                      Logout
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
 
-          <div className="mt-4 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-normal text-[#111827] dark:text-white">Factory Overview</h1>
+          <div className={cn("mt-3 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between", profileOpen && "pt-10 sm:pt-0")}>
+            <div className="min-w-0">
+              <h1 className="text-xl font-semibold tracking-normal text-[#111827] dark:text-white sm:text-2xl">Factory Overview</h1>
               <p className="mt-1 text-sm text-[#6B7280] dark:text-slate-400">Inventory, production, quality, and maintenance in one operational view.</p>
             </div>
-            {headerActions ? <div className="flex flex-wrap items-end gap-3">{headerActions}</div> : null}
+            {headerActions ? <div className="w-full min-w-0 xl:w-auto">{headerActions}</div> : null}
           </div>
 
         </header>
 
-        <main className="min-w-0 overflow-x-hidden p-4 lg:p-6">{children}</main>
+        <main className="min-w-0 overflow-x-hidden p-3 sm:p-4 lg:p-6">{children}</main>
       </div>
-
-      {profileOpen ? (
-        <>
-          <button
-            aria-label="Close profile menu"
-            className="fixed inset-0 z-[70] cursor-default bg-transparent"
-            onClick={() => setProfileOpen(false)}
-            type="button"
-          />
-          <div className="fixed right-3 top-14 z-[90] w-44 rounded-xl border border-slate-200 bg-white p-1 shadow-2xl dark:border-white/10 dark:bg-[#151F2A] sm:right-6">
-            <button className="w-full rounded-lg px-3 py-1.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-white/10" onClick={() => router.push("/dashboard")} type="button">
-              Profile
-            </button>
-            <button
-              className="w-full rounded-lg px-3 py-1.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-white/10"
-              onClick={() => {
-                setPasswordOpen(true);
-                setProfileOpen(false);
-                setPasswordError("");
-                setPasswordMessage("");
-              }}
-              type="button"
-            >
-              Change password
-            </button>
-            <button className="w-full rounded-lg px-3 py-1.5 text-left text-xs font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10" onClick={logout} type="button">
-              Logout
-            </button>
-          </div>
-        </>
-      ) : null}
 
       {passwordOpen ? (
         <div className="modal-overlay">
@@ -363,8 +355,8 @@ const NavGroup = memo(function NavGroup({
   setOpen: () => void;
 }>) {
   return (
-    <div className="mt-4">
-      <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+    <div className="mt-3">
+      <p className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
       <div className="space-y-0.5">
         {items.map((item) => (
           <NavLink
@@ -400,17 +392,17 @@ function NavLink({
   return (
     <Link
       className={cn(
-        "group flex items-center justify-between rounded-xl px-3 py-2 text-[13px] font-medium text-slate-300 transition hover:bg-white/5 hover:text-white",
+        "group flex items-center justify-between rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-slate-300 transition hover:bg-white/5 hover:text-white",
         active && "bg-[#19C93B] text-white shadow-[0_0_18px_rgba(25,201,59,0.24)]",
       )}
       href={href}
       onClick={onClick}
     >
-      <span className="flex items-center gap-2.5">
-        <Icon size={16} />
+      <span className="flex items-center gap-2">
+        <Icon size={15} />
         {label}
       </span>
-      {count ? <span className="grid h-6 w-6 place-items-center rounded-full bg-[#19C93B] text-[11px] font-bold text-white">{count}</span> : <ChevronDown className="rotate-[-90deg] text-slate-500" size={13} />}
+      {count ? <span className="grid h-5 w-5 place-items-center rounded-full bg-[#19C93B] text-[10px] font-bold text-white">{count}</span> : <ChevronDown className="rotate-[-90deg] text-slate-500" size={12} />}
     </Link>
   );
 }

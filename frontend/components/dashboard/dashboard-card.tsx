@@ -19,7 +19,7 @@ function DashboardCardComponent({
     <motion.section
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "rounded-2xl border border-slate-200/70 bg-white p-5 shadow-[0_12px_40px_rgba(7,17,26,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_50px_rgba(7,17,26,0.10)] dark:border-white/10 dark:bg-white/[0.04]",
+        "rounded-2xl border border-slate-200/70 bg-white p-4 shadow-[0_12px_40px_rgba(7,17,26,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_50px_rgba(7,17,26,0.10)] dark:border-white/10 dark:bg-white/[0.04] sm:p-5",
         className,
       )}
       initial={{ opacity: 0, y: 14 }}

@@ -95,6 +95,8 @@ export default function InventoryLogsPage() {
   }
 
   async function handleDelete(entry: InventoryEntry) {
+    if (deletedEntryIdsRef.current.has(entry.id)) return;
+
     const confirmed = window.confirm(`Delete inventory entry for ${entry.part_name} on ${formatDate(entry.date)}?`);
     if (!confirmed) return;
 
@@ -305,7 +307,7 @@ export default function InventoryLogsPage() {
         {error ? <p className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</p> : null}
 
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[1100px] border-collapse text-left text-sm">
+          <table className="data-table w-full min-w-[1100px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs uppercase text-muted-foreground">
                 <th className="py-3 pr-4">Date</th>
@@ -335,20 +337,20 @@ export default function InventoryLogsPage() {
                 entries.map((entry) => (
                   <tr className="border-b border-border last:border-0" key={entry.id}>
                     <td className="py-4 pr-4 text-slate-700">{formatDate(entry.date)}</td>
-                    <td className="py-4 pr-4 font-medium text-slate-950">{entry.part_name}</td>
+                    <td className="wrap-cell py-4 pr-4 font-medium text-slate-950">{entry.part_name}</td>
                     <td className="py-4 pr-4 text-slate-700">{entry.schedule_quantity.toLocaleString("en-IN")}</td>
                     <td className="py-4 pr-4 text-slate-700">{entry.in_quantity.toLocaleString("en-IN")}</td>
                     <td className="py-4 pr-4 text-slate-700">{entry.out_quantity.toLocaleString("en-IN")}</td>
                     <td className="py-4 pr-4 text-slate-700">{entry.rejection_quantity.toLocaleString("en-IN")}</td>
-                    <td className="py-4 pr-4">
+                    <td className="table-actions py-4 pr-4">
                       <Badge tone={entry.balance_quantity < (summary?.low_inventory_threshold ?? 1000) ? "warning" : "success"}>
                         {entry.balance_quantity.toLocaleString("en-IN")}
                       </Badge>
                     </td>
-                    <td className="py-4 pr-4 text-slate-700">{entry.remarks || "-"}</td>
+                    <td className="wrap-cell py-4 pr-4 text-slate-700">{entry.remarks || "-"}</td>
                     <td className="py-4 pr-4 text-slate-700">{entry.created_by}</td>
                     <td className="py-4 pr-4 text-slate-700">{formatDateTime(entry.created_at)}</td>
-                    <td className="py-4 pr-4">
+                    <td className="table-actions py-4 pr-4">
                       <button
                         className="mr-2 inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                         onClick={() => startEdit(entry)}

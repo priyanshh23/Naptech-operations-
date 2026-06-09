@@ -92,6 +92,37 @@ body {
   background-color: rgba(255, 255, 255, 0.035);
 }
 
+.data-table th,
+.data-table td {
+  padding-left: 1rem;
+  padding-right: 1rem;
+  vertical-align: middle;
+}
+
+.data-table th {
+  white-space: nowrap;
+}
+
+.data-table td {
+  white-space: nowrap;
+}
+
+.data-table .table-actions {
+  white-space: nowrap;
+}
+
+.data-table .wrap-cell {
+  min-width: 180px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.data-entry-table th,
+.data-entry-table td {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
 .modal-overlay {
   background: rgba(2, 11, 20, 0.82);
   backdrop-filter: blur(10px);

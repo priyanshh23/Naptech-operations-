@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.middleware.auth import get_current_user, require_full_access
-from app.models.user import User
+from app.middleware.auth import get_current_user, require_roles
+from app.models.user import User, UserRole
 from app.schemas.production import (
     MachineAnalyticsRow,
     ProductionEntryCreate,
@@ -43,7 +43,7 @@ def get_production_entries(
 def post_production_entry(
     payload: ProductionEntryCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_full_access),
+    current_user: User = Depends(require_roles(UserRole.PRODUCTION)),
 ) -> ProductionEntryResponse:
     return create_production_entry(db, payload, current_user)
 
@@ -52,7 +52,7 @@ def post_production_entry(
 def post_production_entries(
     payload: list[ProductionEntryCreate],
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_full_access),
+    current_user: User = Depends(require_roles(UserRole.PRODUCTION)),
 ) -> list[ProductionEntryResponse]:
     return create_production_entries(db, payload, current_user)
 
@@ -62,7 +62,7 @@ def put_production_entry(
     entry_id: int,
     payload: ProductionEntryUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_full_access),
+    _: User = Depends(require_roles(UserRole.PRODUCTION)),
 ) -> ProductionEntryResponse:
     return update_production_entry(db, entry_id, payload)
 
@@ -71,7 +71,7 @@ def put_production_entry(
 def remove_production_entry(
     entry_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_full_access),
+    _: User = Depends(require_roles(UserRole.PRODUCTION)),
 ) -> None:
     delete_production_entry(db, entry_id)
 

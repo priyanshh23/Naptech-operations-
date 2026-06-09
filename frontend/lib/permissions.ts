@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 const fullAccessEmails = new Set(["priyanshgupta9877@gmail.com", "naptechprecision@gmail.com"]);
 
 export function hasFullAccessEmail(user: AuthUser | null): boolean {
-  return Boolean(user && fullAccessEmails.has(user.email.trim().toLowerCase()));
+  return Boolean(user && (fullAccessEmails.has(user.email.trim().toLowerCase()) || user.role === "admin" || user.role === "manager"));
 }
 
 export function getStoredUser(): AuthUser | null {
@@ -36,11 +36,11 @@ export function useStoredUser() {
 }
 
 export function canDeleteEntries(user: AuthUser | null): boolean {
-  return hasFullAccessEmail(user);
+  return Boolean(user);
 }
 
 export function canUseDepartment(user: AuthUser | null, _department: "inventory" | "production" | "quality" | "maintenance"): boolean {
-  return hasFullAccessEmail(user);
+  return Boolean(user && (hasFullAccessEmail(user) || user.role === _department));
 }
 
 export function roleLabel(role: Role): string {

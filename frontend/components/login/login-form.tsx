@@ -112,7 +112,7 @@ export function LoginForm() {
         return;
       }
       if (normalized.includes("invalid email or password")) {
-        setError("Use priyanshgupta9877@gmail.com or naptechprecision@gmail.com with your password.");
+        setError("Invalid email or password. Use an approved account with the correct password.");
         return;
       }
       if (normalized.includes("access denied") || normalized.includes("approved company account")) {
@@ -268,7 +268,7 @@ export function LoginForm() {
                   icon={KeyRound}
                   label="Reset code"
                   name="resetCode"
-                  placeholder="Enter reset code from admin"
+                  placeholder="Enter reset code"
                   type="text"
                 />
                 <LoginInput

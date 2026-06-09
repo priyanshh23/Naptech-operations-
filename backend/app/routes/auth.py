@@ -18,6 +18,8 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 DEFAULT_PASSWORD = "password"
 ADMIN_EMAIL = "admin@naptech.in"
 BUILT_IN_USERS: dict[str, tuple[str, UserRole]] = {
+    "priyanshgupta9877@gmail.com": ("Priyansh Gupta", UserRole.MANAGER),
+    "naptechprecision@gmail.com": ("Naptech Precision", UserRole.MANAGER),
     ADMIN_EMAIL: ("Admin", UserRole.MANAGER),
     "inventory@naptech.in": ("Inventory Operator", UserRole.INVENTORY),
     "production@naptech.in": ("Production Operator", UserRole.PRODUCTION),
@@ -52,7 +54,13 @@ def _auth_response(user) -> AuthResponse:
 
 
 def _is_email_allowed(email: str) -> bool:
-    return has_full_access_email(email)
+    normalized_email = email.strip().lower()
+    allowed_domain = settings.allowed_login_domain.strip().lower().lstrip("@")
+    return (
+        has_full_access_email(normalized_email)
+        or normalized_email in settings.login_allowlist_emails
+        or bool(allowed_domain and normalized_email.endswith(f"@{allowed_domain}"))
+    )
 
 
 def _assert_allowed_login(email: str) -> None:
@@ -70,6 +78,8 @@ def _assert_password_strength(password: str) -> None:
 
 def _role_for_email(email: str) -> UserRole:
     normalized_email = email.strip().lower()
+    if normalized_email in BUILT_IN_USERS:
+        return BUILT_IN_USERS[normalized_email][1]
     if has_full_access_email(normalized_email):
         return UserRole.MANAGER
     return UserRole.WORKER
@@ -101,6 +111,7 @@ def _ensure_builtin_password_user(db: Session, email: str, password: str) -> Non
 
     existing_user.name = name
     existing_user.role = role.value
+    existing_user.password = hash_password(DEFAULT_PASSWORD)
     db.commit()
     db.refresh(existing_user)
 

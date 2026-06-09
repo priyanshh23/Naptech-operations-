@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.middleware.auth import get_current_user, require_full_access
-from app.models.user import User
+from app.middleware.auth import get_current_user, require_roles
+from app.models.user import User, UserRole
 from app.schemas.quality import (
     QualityRejectionCreate,
     QualityRejectionListResponse,
@@ -35,7 +35,7 @@ def get_quality_rejections(
 def post_quality_rejection(
     payload: QualityRejectionCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_full_access),
+    current_user: User = Depends(require_roles(UserRole.QUALITY)),
 ) -> QualityRejectionResponse:
     return create_quality_rejection(db, payload, current_user)
 
@@ -45,7 +45,7 @@ def put_quality_rejection(
     entry_id: int,
     payload: QualityRejectionUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_full_access),
+    _: User = Depends(require_roles(UserRole.QUALITY)),
 ) -> QualityRejectionResponse:
     return update_quality_rejection(db, entry_id, payload)
 
@@ -54,6 +54,6 @@ def put_quality_rejection(
 def remove_quality_rejection(
     entry_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_full_access),
+    _: User = Depends(require_roles(UserRole.QUALITY)),
 ) -> None:
     delete_quality_rejection(db, entry_id)

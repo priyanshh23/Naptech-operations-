@@ -169,6 +169,8 @@ export default function QualityPage() {
   }
 
   async function handleDelete(row: QualityRejection) {
+    if (deletedRowIdsRef.current.has(row.id)) return;
+
     const confirmed = window.confirm(`Delete rejection row ${row.serialNumber || row.id}?`);
     if (!confirmed) return;
 
@@ -304,7 +306,7 @@ export default function QualityPage() {
           </label>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
+          <table className="data-table w-full min-w-[1180px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs uppercase text-muted-foreground">
                 <th className="py-3 pr-4">Date</th>
@@ -328,16 +330,16 @@ export default function QualityPage() {
                   <td className="py-4 pr-4 text-slate-700">{row.shift}</td>
                   <td className="py-4 pr-4 font-semibold text-slate-950">{row.serialNumber}</td>
                   <td className="py-4 pr-4 text-slate-700">{row.machineNumber}</td>
-                  <td className="py-4 pr-4 text-slate-700">{row.partName}</td>
+                  <td className="wrap-cell py-4 pr-4 text-slate-700">{row.partName}</td>
                   <td className="py-4 pr-4 font-semibold text-slate-950">{row.rejectionQuantity}</td>
-                  <td className="py-4 pr-4 text-slate-700">{row.reason}</td>
-                  <td className="py-4 pr-4 text-slate-700">{row.cause}</td>
-                  <td className="py-4 pr-4">
+                  <td className="wrap-cell py-4 pr-4 text-slate-700">{row.reason}</td>
+                  <td className="wrap-cell py-4 pr-4 text-slate-700">{row.cause}</td>
+                  <td className="table-actions py-4 pr-4">
                     <Badge tone={row.crMr === "MR" ? "warning" : "danger"}>{row.crMr}</Badge>
                   </td>
-                  <td className="py-4 pr-4 text-slate-700">{row.remarks || "-"}</td>
+                  <td className="wrap-cell py-4 pr-4 text-slate-700">{row.remarks || "-"}</td>
                   <td className="py-4 pr-4 text-slate-700">{formatDateTime(row.timestamp)}</td>
-                  <td className="py-4 pr-4">
+                  <td className="table-actions py-4 pr-4">
                     <button
                       className="mr-2 inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                       onClick={() => startEdit(row)}

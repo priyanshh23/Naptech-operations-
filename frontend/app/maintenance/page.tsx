@@ -154,6 +154,8 @@ export default function MaintenancePage() {
   }
 
   async function handleDelete(job: MaintenanceJob) {
+    if (deletedJobIdsRef.current.has(job.id)) return;
+
     const confirmed = window.confirm(`Delete maintenance job ${job.jobCode}?`);
     if (!confirmed) return;
 
@@ -282,7 +284,7 @@ export default function MaintenancePage() {
           </label>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1160px] border-collapse text-left text-sm">
+          <table className="data-table w-full min-w-[1160px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs uppercase text-muted-foreground">
                 <th className="py-3 pr-4">Job ID</th>
@@ -305,19 +307,19 @@ export default function MaintenancePage() {
                   <td className="py-4 pr-4 text-slate-700">{job.team}</td>
                   <td className="py-4 pr-4 text-slate-700">{formatDateTime(job.breakdownFrom)}</td>
                   <td className="py-4 pr-4 text-slate-700">{formatDateTime(job.breakdownTo)}</td>
-                  <td className="py-4 pr-4 text-slate-700">{job.reason}</td>
-                  <td className="py-4 pr-4">
+                  <td className="wrap-cell py-4 pr-4 text-slate-700">{job.reason}</td>
+                  <td className="table-actions py-4 pr-4">
                     <Badge tone={job.priority === "High" ? "danger" : job.priority === "Medium" ? "warning" : "neutral"}>
                       {job.priority}
                     </Badge>
                   </td>
-                  <td className="py-4 pr-4">
+                  <td className="table-actions py-4 pr-4">
                     <Badge tone={job.status === "Completed" ? "success" : job.status === "In Progress" ? "warning" : "neutral"}>
                       {job.status}
                     </Badge>
                   </td>
                   <td className="py-4 pr-4 text-slate-700">{formatDateTime(job.dueBy)}</td>
-                  <td className="py-4 pr-4">
+                  <td className="table-actions py-4 pr-4">
                     <button
                       className="mr-2 inline-flex h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                       onClick={() => startEdit(job)}
