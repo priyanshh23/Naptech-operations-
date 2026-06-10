@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.middleware.auth import get_current_user, require_roles
+from app.middleware.auth import get_current_user, require_full_access, require_roles
 from app.models.user import User, UserRole
 from app.schemas.maintenance import (
     MaintenanceJobCreate,
@@ -54,6 +54,6 @@ def put_maintenance_job(
 def remove_maintenance_job(
     job_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.MAINTENANCE)),
+    _: User = Depends(require_full_access),
 ) -> None:
     delete_maintenance_job(db, job_id)

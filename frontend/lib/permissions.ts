@@ -36,7 +36,7 @@ export function useStoredUser() {
 }
 
 export function canDeleteEntries(user: AuthUser | null): boolean {
-  return Boolean(user);
+  return hasFullAccessEmail(user);
 }
 
 export function canUseDepartment(user: AuthUser | null, _department: "inventory" | "production" | "quality" | "maintenance"): boolean {

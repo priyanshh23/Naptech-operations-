@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.middleware.auth import get_current_user, require_roles
+from app.middleware.auth import get_current_user, require_full_access, require_roles
 from app.models.user import User, UserRole
 from app.schemas.inventory import (
     InventoryBalancePreview,
@@ -64,7 +64,7 @@ def put_inventory_entry(
 def remove_inventory_entry(
     entry_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.INVENTORY)),
+    _: User = Depends(require_full_access),
 ) -> None:
     delete_inventory_entry(db, entry_id)
 

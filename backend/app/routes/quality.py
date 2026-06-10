@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.middleware.auth import get_current_user, require_roles
+from app.middleware.auth import get_current_user, require_full_access, require_roles
 from app.models.user import User, UserRole
 from app.schemas.quality import (
     QualityRejectionCreate,
@@ -54,6 +54,6 @@ def put_quality_rejection(
 def remove_quality_rejection(
     entry_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.QUALITY)),
+    _: User = Depends(require_full_access),
 ) -> None:
     delete_quality_rejection(db, entry_id)

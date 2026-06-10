@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.middleware.auth import get_current_user, require_roles
+from app.middleware.auth import get_current_user, require_full_access, require_roles
 from app.models.user import User, UserRole
 from app.schemas.production import (
     MachineAnalyticsRow,
@@ -71,7 +71,7 @@ def put_production_entry(
 def remove_production_entry(
     entry_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.PRODUCTION)),
+    _: User = Depends(require_full_access),
 ) -> None:
     delete_production_entry(db, entry_id)
 
