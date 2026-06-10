@@ -108,7 +108,12 @@ export function LoginForm() {
         normalized.includes("networkerror") ||
         normalized.includes("load failed")
       ) {
-        setError("Backend server is not reachable. Start the FastAPI server on port 8000 and try again.");
+        const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+        setError(
+          isLocalhost
+            ? "Backend server is not reachable. Start the FastAPI server on port 8000 and try again."
+            : "Backend server is not reachable. Please check the production API deployment.",
+        );
         return;
       }
       if (normalized.includes("invalid email or password")) {

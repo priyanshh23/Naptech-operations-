@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const configuredBackend = process.env.NEXT_PUBLIC_API_BASE_URL;
+const configuredBackend = process.env.BACKEND_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
+const productionBackend = "https://api.naptech.co";
 
 function getBackendCandidates() {
   const candidates = new Set<string>();
   if (configuredBackend) {
     candidates.add(configuredBackend.replace(/\/$/, ""));
   }
-  candidates.add("http://127.0.0.1:8000");
-  candidates.add("http://localhost:8000");
+  if (process.env.VERCEL) {
+    candidates.add(productionBackend);
+  } else {
+    candidates.add("http://127.0.0.1:8000");
+    candidates.add("http://localhost:8000");
+  }
   return [...candidates];
 }
 
