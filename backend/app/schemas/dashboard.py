@@ -57,6 +57,18 @@ class DashboardRecentActivity(BaseModel):
     type: str
 
 
+class DashboardQualityOverview(BaseModel):
+    rejection: int
+    mr: int
+    cr: int
+
+
+class DashboardMaintenanceOverview(BaseModel):
+    open: int
+    high: int
+    completed: int
+
+
 class DashboardSummary(BaseModel):
     total_inventory: int
     total_in_quantity: int
@@ -67,6 +79,8 @@ class DashboardSummary(BaseModel):
     delayed_tasks: int
     completed_tasks: int
     production_summary: dict[str, int]
+    quality_overview: DashboardQualityOverview
+    maintenance_overview: DashboardMaintenanceOverview
     kpi_metrics: list[DashboardMetric]
     inventory_categories: list[DashboardInventorySlice]
     movement_series: list[DashboardMovementPoint]

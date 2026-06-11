@@ -166,6 +166,16 @@ export const dashboardSummary: DashboardSummary = {
     delayed: productionTasks.filter((task) => task.status === "delayed").length,
     completed: productionTasks.filter((task) => task.status === "completed").length,
   },
+  quality_overview: {
+    rejection: 0,
+    mr: 0,
+    cr: 0,
+  },
+  maintenance_overview: {
+    open: 0,
+    high: 0,
+    completed: 0,
+  },
   kpi_metrics: [],
   inventory_categories: [],
   movement_series: [],

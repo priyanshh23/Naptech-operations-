@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date
 from typing import Optional
 
 from sqlalchemy import func, or_, select
@@ -204,46 +204,3 @@ def get_production_summary(
         machine_wise_production=machine_wise,
         recent_entries=recent_entries[:8],
     )
-
-
-def seed_demo_production_entries(db: Session) -> None:
-    existing_count = db.scalar(select(func.count(ProductionEntry.id))) or 0
-    if existing_count:
-        return
-
-    today = date.today()
-    demo_rows = [
-        ("A", "CNC-01", "Rahul", "TA-204", "Torque Arm", 42, 86, 688, 670, "Stable output"),
-        ("A", "CNC-02", "Aman", "GH-118", "Gear Housing", 55, 65, 520, 438, "Tool setting delay"),
-        ("A", "VMC-01", "Vishal", "HC-331", "HD Clamp", 38, 94, 752, 790, "Ahead of target"),
-        ("B", "VMC-02", "Sandeep", "BP-422", "Bushing Pin", 47, 76, 608, 552, "Material waiting"),
-        ("B", "CNC-03", "Rahul", "RH-510", "Rotor Hub", 60, 58, 464, 471, "Normal"),
-        ("B", "VMC-03", "Aman", "TA-204", "Torque Arm", 44, 82, 656, 602, "Minor rejection hold"),
-        ("C", "CNC-04", "Vishal", "GH-118", "Gear Housing", 52, 69, 552, 575, "Recovered after lunch"),
-        ("C", "VMC-04", "Sandeep", "HC-331", "HD Clamp", 40, 90, 720, 648, "Inspection delay"),
-    ]
-
-    entries: list[ProductionEntry] = []
-    for offset in range(3):
-        row_date = today - timedelta(days=offset)
-        for shift, machine, operator, part_no, part_name, cycle, tph, target, actual, remarks in demo_rows:
-            daily_adjustment = offset * 18
-            entries.append(
-                ProductionEntry(
-                    date=row_date,
-                    shift=shift,
-                    machine_number=machine,
-                    operator_name=operator,
-                    part_number=part_no,
-                    part_name=part_name,
-                    cycle_time_seconds=cycle,
-                    target_per_hour=tph,
-                    daily_target=target,
-                    actual_production=max(0, actual - daily_adjustment),
-                    remarks=remarks,
-                    created_by="Supervisor",
-                )
-            )
-
-    db.add_all(entries)
-    db.commit()

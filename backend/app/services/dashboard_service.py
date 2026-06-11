@@ -1,13 +1,15 @@
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from app.models.inventory_entry import InventoryEntry
+from app.models.maintenance_job import MaintenanceJob
 from app.models.notification import Notification, NotificationType
 from app.models.production_entry import ProductionEntry
 from app.models.production_task import ProductionTask, TaskStatus
+from app.models.quality_rejection import QualityRejection
 from app.schemas.dashboard import (
     DashboardActiveTask,
     DashboardAlert,
@@ -16,6 +18,8 @@ from app.schemas.dashboard import (
     DashboardMetric,
     DashboardMetricPoint,
     DashboardMovementPoint,
+    DashboardMaintenanceOverview,
+    DashboardQualityOverview,
     DashboardRecentActivity,
     DashboardSummary,
 )
@@ -37,13 +41,73 @@ def _humanize_time(created_at: datetime) -> str:
     return created_at.strftime("%d %b")
 
 
-def _task_statement_for_status(status: TaskStatus, date_from: Optional[date], date_to: Optional[date]):
-    statement = select(func.count()).select_from(ProductionTask).where(ProductionTask.status == status)
+def _date_filtered(statement, column, date_from: Optional[date], date_to: Optional[date]):
     if date_from:
-        statement = statement.where(func.date(ProductionTask.created_at) >= date_from)
+        statement = statement.where(func.date(column) >= date_from)
     if date_to:
-        statement = statement.where(func.date(ProductionTask.created_at) <= date_to)
+        statement = statement.where(func.date(column) <= date_to)
     return statement
+
+
+def _get_task_counts(db: Session, date_from: Optional[date], date_to: Optional[date]) -> dict[str, int]:
+    status_case = ProductionTask.status
+    statement = select(
+        func.coalesce(func.sum(case((status_case == TaskStatus.PENDING.value, 1), else_=0)), 0).label("pending"),
+        func.coalesce(func.sum(case((status_case == TaskStatus.IN_PROGRESS.value, 1), else_=0)), 0).label("in_progress"),
+        func.coalesce(func.sum(case((status_case == TaskStatus.DELAYED.value, 1), else_=0)), 0).label("delayed"),
+        func.coalesce(func.sum(case((status_case == TaskStatus.COMPLETED.value, 1), else_=0)), 0).label("completed"),
+    )
+    statement = _date_filtered(statement, ProductionTask.created_at, date_from, date_to)
+    row = db.execute(statement).one()._mapping
+    return {
+        TaskStatus.PENDING.value: int(row["pending"]),
+        TaskStatus.IN_PROGRESS.value: int(row["in_progress"]),
+        TaskStatus.DELAYED.value: int(row["delayed"]),
+        TaskStatus.COMPLETED.value: int(row["completed"]),
+    }
+
+
+def _get_quality_overview(
+    db: Session,
+    date_from: Optional[date],
+    date_to: Optional[date],
+) -> DashboardQualityOverview:
+    quantity = QualityRejection.rejection_quantity
+    statement = select(
+        func.coalesce(func.sum(quantity), 0).label("rejection"),
+        func.coalesce(func.sum(case((QualityRejection.cr_mr == "MR", quantity), else_=0)), 0).label("mr"),
+        func.coalesce(func.sum(case((QualityRejection.cr_mr == "CR", quantity), else_=0)), 0).label("cr"),
+    )
+    if date_from:
+        statement = statement.where(QualityRejection.date >= date_from)
+    if date_to:
+        statement = statement.where(QualityRejection.date <= date_to)
+
+    row = db.execute(statement).one()._mapping
+    return DashboardQualityOverview(
+        rejection=int(row["rejection"]),
+        mr=int(row["mr"]),
+        cr=int(row["cr"]),
+    )
+
+
+def _get_maintenance_overview(
+    db: Session,
+    date_from: Optional[date],
+    date_to: Optional[date],
+) -> DashboardMaintenanceOverview:
+    statement = select(
+        func.coalesce(func.sum(case((MaintenanceJob.status != "Completed", 1), else_=0)), 0).label("open"),
+        func.coalesce(func.sum(case((MaintenanceJob.priority == "High", 1), else_=0)), 0).label("high"),
+        func.coalesce(func.sum(case((MaintenanceJob.status == "Completed", 1), else_=0)), 0).label("completed"),
+    )
+    statement = _date_filtered(statement, MaintenanceJob.updated_at, date_from, date_to)
+    row = db.execute(statement).one()._mapping
+    return DashboardMaintenanceOverview(
+        open=int(row["open"]),
+        high=int(row["high"]),
+        completed=int(row["completed"]),
+    )
 
 
 def get_dashboard_summary(
@@ -53,14 +117,12 @@ def get_dashboard_summary(
 ) -> DashboardSummary:
     inventory_summary = get_inventory_summary(db, date_from, date_to)
 
-    active_tasks = db.scalar(_task_statement_for_status(TaskStatus.IN_PROGRESS, date_from, date_to)) or 0
-    delayed_tasks = db.scalar(_task_statement_for_status(TaskStatus.DELAYED, date_from, date_to)) or 0
-    completed_tasks = db.scalar(_task_statement_for_status(TaskStatus.COMPLETED, date_from, date_to)) or 0
-
-    production_summary = {
-        status.value: db.scalar(_task_statement_for_status(status, date_from, date_to)) or 0
-        for status in TaskStatus
-    }
+    production_summary = _get_task_counts(db, date_from, date_to)
+    active_tasks = production_summary[TaskStatus.IN_PROGRESS.value]
+    delayed_tasks = production_summary[TaskStatus.DELAYED.value]
+    completed_tasks = production_summary[TaskStatus.COMPLETED.value]
+    quality_overview = _get_quality_overview(db, date_from, date_to)
+    maintenance_overview = _get_maintenance_overview(db, date_from, date_to)
 
     latest_part_balances = inventory_summary.part_balances[:5]
     total_inventory = max(inventory_summary.total_inventory, 1)
@@ -226,6 +288,8 @@ def get_dashboard_summary(
         delayed_tasks=int(delayed_tasks),
         completed_tasks=int(completed_tasks),
         production_summary=production_summary,
+        quality_overview=quality_overview,
+        maintenance_overview=maintenance_overview,
         kpi_metrics=kpi_metrics,
         inventory_categories=inventory_categories,
         movement_series=movement_series,

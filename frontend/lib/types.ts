@@ -241,6 +241,16 @@ export type DashboardSummary = {
   delayed_tasks: number;
   completed_tasks: number;
   production_summary: Record<TaskStatus, number>;
+  quality_overview: {
+    rejection: number;
+    mr: number;
+    cr: number;
+  };
+  maintenance_overview: {
+    open: number;
+    high: number;
+    completed: number;
+  };
   kpi_metrics: Array<{
     label: string;
     value: number;

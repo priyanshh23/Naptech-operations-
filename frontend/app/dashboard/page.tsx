@@ -1,7 +1,7 @@
 "use client";
 
 import { Activity, AlertTriangle, Boxes, CalendarDays, CheckCircle2, Download, Factory, FileText, Loader2, Shield, Wrench } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ActivityTimeline } from "@/components/dashboard/activity-timeline";
 import { AlertsPanel } from "@/components/dashboard/alerts-panel";
@@ -12,7 +12,7 @@ import { KpiCard } from "@/components/dashboard/kpi-card";
 import { ActiveTasksTable, LowStockTable } from "@/components/dashboard/tables";
 import { AccessDenied } from "@/components/dashboard/access-denied";
 import { Card } from "@/components/ui";
-import { getDashboardSummary, getMaintenanceJobs, getQualityRejections } from "@/lib/api";
+import { getDashboardSummary } from "@/lib/api";
 import { downloadExcelSections, printPdfSections } from "@/lib/export-utils";
 import { useStoredUser } from "@/lib/permissions";
 import type { DashboardSummary } from "@/lib/types";
@@ -25,16 +25,6 @@ import type {
   ProductionPoint,
   RecentActivity,
 } from "@/types/dashboard";
-
-type QualityOverviewRow = {
-  rejectionQuantity: number;
-  crMr: "CR" | "MR";
-};
-
-type MaintenanceOverviewRow = {
-  status: "Pending" | "In Progress" | "Completed";
-  priority: "High" | "Medium" | "Low";
-};
 
 type DepartmentOverview = {
   department: string;
@@ -55,24 +45,9 @@ export default function DashboardPage() {
   const [dateTo, setDateTo] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [qualityRows, setQualityRows] = useState<QualityOverviewRow[]>([]);
-  const [maintenanceRows, setMaintenanceRows] = useState<MaintenanceOverviewRow[]>([]);
+  const lastRefreshAtRef = useRef(0);
   const { isReady, user: currentUser } = useStoredUser();
   const canAccessDashboard = Boolean(currentUser);
-
-  const loadDepartmentRows = useCallback(async () => {
-    try {
-      const [qualityResponse, maintenanceResponse] = await Promise.all([
-        getQualityRejections(),
-        getMaintenanceJobs(),
-      ]);
-      setQualityRows(qualityResponse.items);
-      setMaintenanceRows(maintenanceResponse.items);
-    } catch {
-      setQualityRows([]);
-      setMaintenanceRows([]);
-    }
-  }, []);
 
   const loadDashboard = useCallback(async () => {
     setIsLoading(true);
@@ -84,14 +59,14 @@ export default function DashboardPage() {
           date_to: dateTo || undefined,
       });
       setSummary(response);
-      void loadDepartmentRows();
+      lastRefreshAtRef.current = Date.now();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to load live dashboard data.";
       setError(message);
     } finally {
       setIsLoading(false);
     }
-  }, [dateFrom, dateTo, loadDepartmentRows]);
+  }, [dateFrom, dateTo]);
 
   useEffect(() => {
     if (isReady && canAccessDashboard) {
@@ -105,6 +80,11 @@ export default function DashboardPage() {
     const refreshDashboard = () => {
       void loadDashboard();
     };
+    const refreshOnFocus = () => {
+      if (Date.now() - lastRefreshAtRef.current > 30000) {
+        refreshDashboard();
+      }
+    };
     const refreshOnStorage = (event: StorageEvent) => {
       if (event.key === "naptech_data_changed_at") {
         refreshDashboard();
@@ -113,12 +93,12 @@ export default function DashboardPage() {
 
     window.addEventListener("naptech:data-changed", refreshDashboard);
     window.addEventListener("storage", refreshOnStorage);
-    window.addEventListener("focus", refreshDashboard);
+    window.addEventListener("focus", refreshOnFocus);
 
     return () => {
       window.removeEventListener("naptech:data-changed", refreshDashboard);
       window.removeEventListener("storage", refreshOnStorage);
-      window.removeEventListener("focus", refreshDashboard);
+      window.removeEventListener("focus", refreshOnFocus);
     };
   }, [isReady, canAccessDashboard, loadDashboard]);
 
@@ -235,20 +215,12 @@ export default function DashboardPage() {
   ), [summary]);
   const recentActivities: RecentActivity[] = useMemo(() => summary?.recent_activities ?? [], [summary]);
   const qualityTotals = useMemo(
-    () => ({
-      rejection: qualityRows.reduce((sum, row) => sum + Number(row.rejectionQuantity || 0), 0),
-      mr: qualityRows.filter((row) => row.crMr === "MR").reduce((sum, row) => sum + Number(row.rejectionQuantity || 0), 0),
-      cr: qualityRows.filter((row) => row.crMr === "CR").reduce((sum, row) => sum + Number(row.rejectionQuantity || 0), 0),
-    }),
-    [qualityRows],
+    () => summary?.quality_overview ?? { rejection: 0, mr: 0, cr: 0 },
+    [summary],
   );
   const maintenanceTotals = useMemo(
-    () => ({
-      open: maintenanceRows.filter((row) => row.status !== "Completed").length,
-      high: maintenanceRows.filter((row) => row.priority === "High").length,
-      completed: maintenanceRows.filter((row) => row.status === "Completed").length,
-    }),
-    [maintenanceRows],
+    () => summary?.maintenance_overview ?? { open: 0, high: 0, completed: 0 },
+    [summary],
   );
   const departmentOverview: DepartmentOverview[] = useMemo(() => [
     {
