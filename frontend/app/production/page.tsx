@@ -328,9 +328,9 @@ export default function ProductionPage() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="space-y-3 md:hidden">
+          <div className="w-full max-w-full space-y-3 overflow-hidden md:hidden">
             {draftRows.map((row, index) => (
-              <div className="rounded-2xl border border-border bg-white p-4 dark:bg-white/[0.04]" key={row.rowId}>
+              <div className="w-full max-w-full overflow-hidden rounded-2xl border border-border bg-white p-4 dark:bg-white/[0.04]" key={row.rowId}>
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <p className="text-sm font-semibold text-slate-950">Row {index + 1}</p>
                   <button
@@ -345,7 +345,7 @@ export default function ProductionPage() {
                   <label className="block">
                     <span className="mb-2 block text-sm font-medium text-slate-800">Shift</span>
                     <select
-                      className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none"
+                      className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none"
                       onChange={(event) => updateDraft(row.rowId, "shift", event.target.value)}
                       value={row.shift}
                     >
@@ -696,7 +696,7 @@ export default function ProductionPage() {
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-800">Shift</span>
                 <select
-                  className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
                   onChange={(event) => setEditForm((current) => current && ({ ...current, shift: event.target.value }))}
                   value={editForm.shift}
                 >
@@ -716,7 +716,7 @@ export default function ProductionPage() {
               <label className="block md:col-span-2">
                 <span className="mb-2 block text-sm font-medium text-slate-800">Remarks</span>
                 <textarea
-                  className="min-h-24 w-full rounded-xl border border-border px-3 py-2 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  className="form-control min-h-24 rounded-xl border border-border px-3 py-2 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
                   onChange={(event) => setEditForm((current) => current && ({ ...current, remarks: event.target.value }))}
                   value={editForm.remarks ?? ""}
                 />
@@ -920,7 +920,7 @@ function DraftField({
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-slate-800">{label}</span>
       <input
-        className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+        className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
         min={type === "number" ? 0 : undefined}
         onChange={(event) => updateDraft(row.rowId, field, event.target.value)}
         placeholder={placeholder}
@@ -947,7 +947,7 @@ function EditField({
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-slate-800">{label}</span>
       <input
-        className="h-11 w-full rounded-xl border border-border px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+        className="form-control h-11 rounded-xl border border-border px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
         min={type === "number" ? 0 : undefined}
         onChange={(event) => onChange(event.target.value)}
         required
@@ -973,7 +973,7 @@ function DateFilter({
     <label className="block">
       <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</span>
       <input
-        className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+        className="form-control h-11 rounded-xl border border-border bg-white px-3 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
         min={min}
         onChange={(event) => onChange(event.target.value)}
         type="date"

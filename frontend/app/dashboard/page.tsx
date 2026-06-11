@@ -313,14 +313,14 @@ export default function DashboardPage() {
     <DashboardShell
       headerActions={
         <>
-          <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:w-auto xl:grid-cols-[160px_160px_auto_auto_auto_auto]">
+          <div className="grid w-full min-w-0 max-w-full grid-cols-1 gap-2 overflow-hidden sm:grid-cols-2 xl:w-auto xl:grid-cols-[160px_160px_auto_auto_auto_auto]">
             <label className="block">
               <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
                 <CalendarDays size={13} />
                 From Date
               </span>
               <input
-                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                className="form-control h-11 rounded-xl border border-border bg-white px-3 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
                 onChange={(event) => setDateFrom(event.target.value)}
                 type="date"
                 value={dateFrom}
@@ -331,7 +331,7 @@ export default function DashboardPage() {
                 To Date
               </span>
               <input
-                className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                className="form-control h-11 rounded-xl border border-border bg-white px-3 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
                 min={dateFrom || undefined}
                 onChange={(event) => setDateTo(event.target.value)}
                 type="date"

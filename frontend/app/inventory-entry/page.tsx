@@ -305,7 +305,7 @@ export default function InventoryEntryPage() {
             <label className="block md:col-span-2">
               <span className="mb-2 block text-sm font-medium text-slate-800">Remarks</span>
               <textarea
-                className="min-h-28 w-full rounded-2xl border border-border px-4 py-3 outline-none ring-0 transition focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                className="form-control min-h-28 rounded-2xl border border-border px-4 py-3 outline-none ring-0 transition focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
                 name="remarks"
                 onChange={(event) => setForm((current) => ({ ...current, remarks: event.target.value }))}
                 placeholder="Optional notes for dispatch, shortage, hold, or rejection reason"
@@ -397,7 +397,7 @@ export default function InventoryEntryPage() {
               From Date
             </span>
             <input
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+              className="form-control h-11 rounded-xl border border-border bg-white px-3 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
               onChange={(event) => {
                 setDateFrom(event.target.value);
               }}
@@ -410,7 +410,7 @@ export default function InventoryEntryPage() {
               To Date
             </span>
             <input
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+              className="form-control h-11 rounded-xl border border-border bg-white px-3 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
               min={dateFrom || undefined}
               onChange={(event) => {
                 setDateTo(event.target.value);
@@ -596,7 +596,7 @@ export default function InventoryEntryPage() {
               <label className="block md:col-span-2">
                 <span className="mb-2 block text-sm font-medium text-slate-800">Remarks</span>
                 <textarea
-                  className="min-h-28 w-full rounded-2xl border border-border px-4 py-3 outline-none ring-0 transition focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  className="form-control min-h-28 rounded-2xl border border-border px-4 py-3 outline-none ring-0 transition focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
                   name="remarks"
                   onChange={(event) => setForm((current) => ({ ...current, remarks: event.target.value }))}
                   placeholder="Optional notes for dispatch, shortage, hold, or rejection reason"
@@ -695,7 +695,7 @@ function Field({
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-slate-800">{label}</span>
       <input
-        className="h-12 w-full rounded-2xl border border-border px-4 outline-none ring-0 transition focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+        className="form-control h-12 rounded-2xl border border-border px-4 outline-none ring-0 transition focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
         min={type === "number" ? 0 : undefined}
         name={name}
         onChange={(event) => onChange(event.target.value)}

@@ -226,7 +226,7 @@ export default function MaintenancePage() {
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-slate-800">Priority</span>
             <select
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+              className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
               onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value as MaintenanceJob["priority"] }))}
               value={form.priority}
             >
@@ -238,7 +238,7 @@ export default function MaintenancePage() {
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-slate-800">Status</span>
             <select
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+              className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
               onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as MaintenanceJob["status"] }))}
               value={form.status}
             >
@@ -267,7 +267,7 @@ export default function MaintenancePage() {
           <label className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
             <input
-              className="h-11 w-full rounded-xl border border-border bg-white pl-10 pr-10 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+              className="form-control h-11 rounded-xl border border-border bg-white pl-10 pr-10 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search machine, team, reason, status"
               value={search}
@@ -424,7 +424,7 @@ export default function MaintenancePage() {
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-800">Priority</span>
                 <select
-                  className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
                   onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value as MaintenanceJob["priority"] }))}
                   value={form.priority}
                 >
@@ -436,7 +436,7 @@ export default function MaintenancePage() {
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-800">Status</span>
                 <select
-                  className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
                   onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as MaintenanceJob["status"] }))}
                   value={form.status}
                 >
@@ -546,7 +546,7 @@ function Field({
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-slate-800">{label}</span>
       <input
-        className="h-11 w-full rounded-xl border border-border px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+        className="form-control h-11 rounded-xl border border-border px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         required

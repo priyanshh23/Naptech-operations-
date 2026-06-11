@@ -231,7 +231,7 @@ export default function InventoryLogsPage() {
               Part
             </span>
             <select
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none"
+              className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none"
               onChange={(event) => {
                 setPage(1);
                 setPartNameFilter(event.target.value);
@@ -251,7 +251,7 @@ export default function InventoryLogsPage() {
               From Date
             </span>
             <input
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none"
+              className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none"
               onChange={(event) => {
                 setPage(1);
                 setDateFrom(event.target.value);
@@ -265,7 +265,7 @@ export default function InventoryLogsPage() {
               To Date
             </span>
             <input
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none"
+              className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none"
               min={dateFrom || undefined}
               onChange={(event) => {
                 setPage(1);
@@ -484,7 +484,7 @@ export default function InventoryLogsPage() {
               <label className="block md:col-span-2">
                 <span className="mb-2 block text-sm font-medium text-slate-800">Remarks</span>
                 <textarea
-                  className="min-h-24 w-full rounded-xl border border-border px-3 py-2 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  className="form-control min-h-24 rounded-xl border border-border px-3 py-2 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
                   onChange={(event) => setEditForm((current) => current && ({ ...current, remarks: event.target.value }))}
                   value={editForm.remarks ?? ""}
                 />
@@ -538,7 +538,7 @@ function EditField({
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-slate-800">{label}</span>
       <input
-        className="h-11 w-full rounded-xl border border-border px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+        className="form-control h-11 rounded-xl border border-border px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
         min={type === "number" ? 0 : undefined}
         onChange={(event) => onChange(event.target.value)}
         required

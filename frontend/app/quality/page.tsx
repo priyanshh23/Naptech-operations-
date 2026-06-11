@@ -237,7 +237,7 @@ export default function QualityPage() {
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-slate-800">Shift</span>
             <select
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+              className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
               onChange={(event) => setForm((current) => ({ ...current, shift: event.target.value as QualityRejection["shift"] }))}
               value={form.shift}
             >
@@ -255,7 +255,7 @@ export default function QualityPage() {
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-slate-800">CR / MR</span>
             <select
-              className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+              className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
               onChange={(event) => setForm((current) => ({ ...current, crMr: event.target.value as QualityRejection["crMr"] }))}
               value={form.crMr}
             >
@@ -289,7 +289,7 @@ export default function QualityPage() {
           <label className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
             <input
-              className="h-11 w-full rounded-xl border border-border bg-white pl-10 pr-10 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+              className="form-control h-11 rounded-xl border border-border bg-white pl-10 pr-10 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search machine, part, reason, cause"
               value={search}
@@ -434,7 +434,7 @@ export default function QualityPage() {
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-800">Shift</span>
                 <select
-                  className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
                   onChange={(event) => setForm((current) => ({ ...current, shift: event.target.value as QualityRejection["shift"] }))}
                   value={form.shift}
                 >
@@ -452,7 +452,7 @@ export default function QualityPage() {
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-800">CR / MR</span>
                 <select
-                  className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
                   onChange={(event) => setForm((current) => ({ ...current, crMr: event.target.value as QualityRejection["crMr"] }))}
                   value={form.crMr}
                 >
@@ -463,7 +463,7 @@ export default function QualityPage() {
               <label className="block md:col-span-2 xl:col-span-3">
                 <span className="mb-2 block text-sm font-medium text-slate-800">Remarks</span>
                 <textarea
-                  className="min-h-24 w-full rounded-xl border border-border px-3 py-2 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  className="form-control min-h-24 rounded-xl border border-border px-3 py-2 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
                   onChange={(event) => setForm((current) => ({ ...current, remarks: event.target.value }))}
                   value={form.remarks}
                 />
@@ -579,7 +579,7 @@ function Field({
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-slate-800">{label}</span>
       <input
-        className="h-11 w-full rounded-xl border border-border px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+        className="form-control h-11 rounded-xl border border-border px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
         min={type === "number" ? 0 : undefined}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}

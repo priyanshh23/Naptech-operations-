@@ -187,10 +187,31 @@ select,
 textarea {
   font: inherit;
   min-width: 0;
+  max-width: 100%;
 }
 
 button {
   max-width: 100%;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+input[type="date"],
+input[type="datetime-local"],
+select.form-control {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .metric-grid {
@@ -219,6 +240,22 @@ button {
 }
 
 @media (max-width: 640px) {
+  body {
+    width: 100%;
+  }
+
+  main,
+  section,
+  article,
+  form,
+  label,
+  dl,
+  dd,
+  dt {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   .metric-grid {
     grid-template-columns: 1fr;
   }
