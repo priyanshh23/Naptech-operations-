@@ -26,7 +26,7 @@ export function BrandingPanel() {
   return (
     <motion.section
       animate={{ opacity: 1, y: 0 }}
-      className="relative hidden h-full min-h-0 overflow-hidden rounded-[24px] border border-white/8 bg-[#020B14] xl:flex xl:flex-col xl:justify-between"
+      className="relative hidden h-full min-h-0 overflow-hidden rounded-[24px] border border-white/8 bg-[#020B14] lg:flex lg:flex-col lg:justify-between"
       initial={{ opacity: 0, y: 18 }}
       transition={{ duration: 0.55, ease: "easeOut" }}
     >
@@ -40,7 +40,7 @@ export function BrandingPanel() {
 
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,11,20,0.24)_0%,rgba(2,11,20,0.88)_48%,rgba(2,11,20,0.97)_100%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(163,255,18,0.14),transparent_24%),radial-gradient(circle_at_60%_78%,rgba(25,201,59,0.16),transparent_26%),linear-gradient(120deg,rgba(7,17,26,0.24)_35%,rgba(25,201,59,0.05)_100%)]" />
-      <div className="absolute right-[-1px] top-0 hidden h-full w-10 bg-[linear-gradient(180deg,rgba(163,255,18,0.96),rgba(25,201,59,0.98))] [clip-path:polygon(100%_0,0_0,100%_100%)] xl:block" />
+      <div className="absolute right-[-1px] top-0 hidden h-full w-10 bg-[linear-gradient(180deg,rgba(163,255,18,0.96),rgba(25,201,59,0.98))] [clip-path:polygon(100%_0,0_0,100%_100%)] lg:block" />
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-[radial-gradient(circle_at_50%_100%,rgba(25,201,59,0.28),transparent_58%)]" />
 
       <div className="relative z-10 flex items-center gap-3 px-5 pt-5 lg:px-6 lg:pt-6 xl:px-8 xl:pt-7">

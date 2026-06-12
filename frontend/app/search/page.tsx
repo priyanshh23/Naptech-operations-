@@ -177,7 +177,7 @@ function QualitySection({ items, query }: Readonly<{ items: QualityRejection[]; 
       {items.map((item) => (
         <ResultRow
           badge={item.crMr}
-          description={`${formatDate(item.date)} | ${item.machineNumber} | ${item.reason} | ${item.cause}`}
+          description={`${formatDate(item.date)} | ${item.machineNumber} | ${item.reason}`}
           href={`/quality?search=${encodeURIComponent(item.machineNumber || item.partName)}`}
           key={item.id}
           title={item.partName}

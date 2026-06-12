@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Eye, EyeOff, KeyRound, Lock, Mail } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { Button, Card } from "@/components/ui";
@@ -35,7 +34,6 @@ function GoogleMark() {
 }
 
 export function LoginForm() {
-  const router = useRouter();
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -46,11 +44,6 @@ export function LoginForm() {
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
-    const existingToken = window.localStorage.getItem("naptech_access_token");
-    if (existingToken) {
-      router.replace("/dashboard");
-    }
-
     if (!googleClientId || document.getElementById("google-identity-script")) return;
     const script = document.createElement("script");
     script.id = "google-identity-script";
@@ -58,7 +51,7 @@ export function LoginForm() {
     script.async = true;
     script.defer = true;
     document.head.appendChild(script);
-  }, [googleClientId, router]);
+  }, [googleClientId]);
 
   function storeSession(response: Awaited<ReturnType<typeof login>>) {
     const fullAccessEmails = ["priyanshgupta9877@gmail.com", "naptechprecision@gmail.com"];
@@ -86,7 +79,7 @@ export function LoginForm() {
     try {
       const response = await login(email, password);
       storeSession(response);
-      router.replace("/dashboard");
+      window.location.href = "/dashboard";
     } catch (error) {
       setIsLoading(false);
       const message = error instanceof Error ? error.message : "Login failed";
@@ -194,7 +187,7 @@ export function LoginForm() {
             }
             const response = await googleLogin(googleResponse.access_token, "access_token");
             storeSession(response);
-            router.replace("/dashboard");
+            window.location.href = "/dashboard";
           } catch (error) {
             setIsGoogleLoading(false);
             const message = error instanceof Error ? error.message : "Google login failed.";

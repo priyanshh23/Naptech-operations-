@@ -31,6 +31,7 @@ export default function InventoryEntryPage() {
   const [summary, setSummary] = useState<InventorySummary | null>(null);
   const [recentEntries, setRecentEntries] = useState<InventoryEntry[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
@@ -46,16 +47,11 @@ export default function InventoryEntryPage() {
 
   useEffect(() => {
     void loadPageData();
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, debouncedSearch]);
 
   const filteredEntries = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) {
-      return recentEntries;
-    }
-
-    return recentEntries.filter((entry) => entry.part_name.toLowerCase().includes(query));
-  }, [recentEntries, search]);
+    return recentEntries;
+  }, [recentEntries]);
 
   const previousBalance = useMemo(() => {
     if (!summary || !form.part_name.trim()) {
@@ -75,6 +71,13 @@ export default function InventoryEntryPage() {
   useEffect(() => {
     setPage(1);
   }, [search, dateFrom, dateTo]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
 
   if (!isUserReady) {
     return (
@@ -100,6 +103,7 @@ export default function InventoryEntryPage() {
       const [inventorySummary, inventoryEntries] = await Promise.all([
         getInventorySummary(),
         getInventoryEntries({
+          search: debouncedSearch || undefined,
           date_from: dateFrom || undefined,
           date_to: dateTo || undefined,
         }),
@@ -385,7 +389,7 @@ export default function InventoryEntryPage() {
             <input
               className="w-full outline-none"
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search part name"
+              placeholder="Search part, remarks, created by"
               value={search}
             />
           </label>

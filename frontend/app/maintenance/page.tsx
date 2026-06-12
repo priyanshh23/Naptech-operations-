@@ -33,28 +33,15 @@ export default function MaintenancePage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const deletedJobIdsRef = useRef<Set<number>>(new Set());
   const { isReady: isUserReady, user: currentUser } = useStoredUser();
   const canDelete = canDeleteEntries(currentUser);
   const canAccess = canUseDepartment(currentUser, "maintenance");
   const filteredJobs = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return maintenanceJobs;
-    return maintenanceJobs.filter((job) =>
-      [
-        job.jobCode,
-        job.machine,
-        job.team,
-        job.priority,
-        job.status,
-        job.reason,
-        job.breakdownFrom,
-        job.breakdownTo,
-        job.dueBy,
-      ].some((value) => String(value).toLowerCase().includes(query)),
-    );
-  }, [maintenanceJobs, search]);
+    return maintenanceJobs;
+  }, [maintenanceJobs]);
   const totalPages = Math.max(1, Math.ceil(filteredJobs.length / PAGE_SIZE));
   const paginatedJobs = filteredJobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -63,8 +50,18 @@ export default function MaintenancePage() {
     if (initialSearch) {
       setSearch(initialSearch);
     }
-    void loadMaintenanceJobs();
   }, []);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => {
+    void loadMaintenanceJobs(debouncedSearch);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     setPage(1);
@@ -86,10 +83,10 @@ export default function MaintenancePage() {
     );
   }
 
-  async function loadMaintenanceJobs() {
+  async function loadMaintenanceJobs(searchTerm = debouncedSearch) {
     setError("");
     try {
-      const response = await getMaintenanceJobs();
+      const response = await getMaintenanceJobs({ search: searchTerm || undefined });
       setMaintenanceJobs(withoutDeletedIds(response.items, deletedJobIdsRef.current));
     } catch (error) {
       setError(error instanceof Error ? error.message : "Unable to load maintenance jobs.");

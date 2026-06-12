@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Download, FileText, Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Download, FileText, Loader2, Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -23,7 +23,6 @@ const initialForm = {
   partName: "",
   rejectionQuantity: 0,
   reason: "",
-  cause: "",
   crMr: "MR" as QualityRejection["crMr"],
   remarks: "",
 };
@@ -35,7 +34,11 @@ export default function QualityPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"unsaved" | "saved">("unsaved");
+  const isSavingRef = useRef(false);
   const deletedRowIdsRef = useRef<Set<number>>(new Set());
   const { isReady: isUserReady, user: currentUser } = useStoredUser();
   const canDelete = canDeleteEntries(currentUser);
@@ -52,7 +55,6 @@ export default function QualityPage() {
         row.machineNumber,
         row.partName,
         row.reason,
-        row.cause,
         row.crMr,
         row.remarks,
       ].some((value) => String(value).toLowerCase().includes(query)),
@@ -74,8 +76,18 @@ export default function QualityPage() {
     if (initialSearch) {
       setSearch(initialSearch);
     }
-    void loadQualityRows();
   }, []);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => {
+    void loadQualityRows(debouncedSearch);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     setPage(1);
@@ -97,10 +109,10 @@ export default function QualityPage() {
     );
   }
 
-  async function loadQualityRows() {
+  async function loadQualityRows(searchTerm = debouncedSearch) {
     setError("");
     try {
-      const response = await getQualityRejections();
+      const response = await getQualityRejections({ search: searchTerm || undefined });
       setQualityRows(withoutDeletedIds(response.items, deletedRowIdsRef.current));
     } catch (error) {
       setError(error instanceof Error ? error.message : "Unable to load quality rows.");
@@ -109,8 +121,12 @@ export default function QualityPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSavingRef.current) return;
+
     setMessage("");
     setError("");
+    isSavingRef.current = true;
+    setIsSaving(true);
 
     if (editingId) {
       try {
@@ -118,9 +134,13 @@ export default function QualityPage() {
         await loadQualityRows();
         setEditingId(null);
         setForm(initialForm);
+        setSaveStatus("saved");
         setMessage("Daily rejection row updated.");
       } catch (error) {
         setError(error instanceof Error ? error.message : "Daily rejection row could not be updated.");
+      } finally {
+        isSavingRef.current = false;
+        setIsSaving(false);
       }
       return;
     }
@@ -130,10 +150,19 @@ export default function QualityPage() {
       await loadQualityRows();
       setPage(1);
       setForm({ ...initialForm, date: form.date, shift: form.shift });
+      setSaveStatus("saved");
       setMessage("Daily rejection row saved.");
     } catch (error) {
       setError(error instanceof Error ? error.message : "Daily rejection row could not be saved.");
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
     }
+  }
+
+  function updateForm(update: Partial<typeof initialForm>) {
+    setForm((current) => ({ ...current, ...update }));
+    setSaveStatus("unsaved");
   }
 
   function normalizeForm(): QualityRejectionPayload {
@@ -145,7 +174,7 @@ export default function QualityPage() {
       partName: form.partName.trim(),
       rejectionQuantity: Number(form.rejectionQuantity || 0),
       reason: form.reason.trim(),
-      cause: form.cause.trim(),
+      cause: "-",
       crMr: form.crMr,
       remarks: form.remarks.trim(),
     };
@@ -153,6 +182,7 @@ export default function QualityPage() {
 
   function startEdit(row: QualityRejection) {
     setEditingId(row.id);
+    setSaveStatus("unsaved");
     setForm({
       date: row.date.slice(0, 10),
       shift: row.shift,
@@ -161,7 +191,6 @@ export default function QualityPage() {
       partName: row.partName,
       rejectionQuantity: row.rejectionQuantity,
       reason: row.reason,
-      cause: row.cause,
       crMr: row.crMr,
       remarks: row.remarks,
     });
@@ -228,17 +257,17 @@ export default function QualityPage() {
           </div>
           <div>
             <h2 className="text-lg font-semibold text-slate-950">Daily rejection report entry</h2>
-            <p className="text-sm text-muted-foreground">Enter S.No, machine, part, rejection quantity, reason, cause, CR/MR, and remarks.</p>
+            <p className="text-sm text-muted-foreground">Enter S.No, machine, part, rejection quantity, reason, CR/MR, and remarks.</p>
           </div>
         </div>
 
         <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-6" onSubmit={handleSubmit}>
-          <Field label="Date" onChange={(value) => setForm((current) => ({ ...current, date: value }))} placeholder="" type="date" value={form.date} />
+          <Field label="Date" onChange={(value) => updateForm({ date: value })} placeholder="" type="date" value={form.date} />
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-slate-800">Shift</span>
             <select
               className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
-              onChange={(event) => setForm((current) => ({ ...current, shift: event.target.value as QualityRejection["shift"] }))}
+              onChange={(event) => updateForm({ shift: event.target.value as QualityRejection["shift"] })}
               value={form.shift}
             >
               <option value="A">A</option>
@@ -246,27 +275,30 @@ export default function QualityPage() {
               <option value="C">C</option>
             </select>
           </label>
-          <Field label="S. No." onChange={(value) => setForm((current) => ({ ...current, serialNumber: value }))} placeholder="1" value={form.serialNumber} />
-          <Field label="Machine Number" onChange={(value) => setForm((current) => ({ ...current, machineNumber: value }))} placeholder="CNC-08" value={form.machineNumber} />
-          <Field label="Part Name" onChange={(value) => setForm((current) => ({ ...current, partName: value }))} placeholder="Ring Cap" value={form.partName} />
-          <Field label="Rejection Qty." onChange={(value) => setForm((current) => ({ ...current, rejectionQuantity: Number(value || 0) }))} placeholder="1" type="number" value={String(form.rejectionQuantity)} />
-          <Field label="Reason" onChange={(value) => setForm((current) => ({ ...current, reason: value }))} placeholder="Thread not OK" value={form.reason} />
-          <Field label="Cause" onChange={(value) => setForm((current) => ({ ...current, cause: value }))} placeholder="Variation" value={form.cause} />
+          <Field label="S. No." onChange={(value) => updateForm({ serialNumber: value })} placeholder="1" value={form.serialNumber} />
+          <Field label="Machine Number" onChange={(value) => updateForm({ machineNumber: value })} placeholder="CNC-08" value={form.machineNumber} />
+          <Field label="Part Name" onChange={(value) => updateForm({ partName: value })} placeholder="Ring Cap" value={form.partName} />
+          <Field label="Rejection Qty." onChange={(value) => updateForm({ rejectionQuantity: Number(value || 0) })} placeholder="1" type="number" value={String(form.rejectionQuantity)} />
+          <Field label="Reason" onChange={(value) => updateForm({ reason: value })} placeholder="Thread not OK" value={form.reason} />
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-slate-800">CR / MR</span>
             <select
               className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
-              onChange={(event) => setForm((current) => ({ ...current, crMr: event.target.value as QualityRejection["crMr"] }))}
+              onChange={(event) => updateForm({ crMr: event.target.value as QualityRejection["crMr"] })}
               value={form.crMr}
             >
               <option value="MR">MR</option>
               <option value="CR">CR</option>
             </select>
           </label>
-          <Field label="Remarks" onChange={(value) => setForm((current) => ({ ...current, remarks: value }))} placeholder="Optional" value={form.remarks} />
-          <Button className="h-11 self-end rounded-xl" disabled={!form.serialNumber || !form.machineNumber || !form.partName || !form.reason || !form.cause} type="submit">
-            <Save size={16} />
-            Save Row
+          <Field label="Remarks" onChange={(value) => updateForm({ remarks: value })} placeholder="Optional" value={form.remarks} />
+          <Button
+            className={saveStatus === "saved" ? "h-11 self-end rounded-xl bg-emerald-600" : "h-11 self-end rounded-xl bg-red-600"}
+            disabled={isSaving || !form.serialNumber || !form.machineNumber || !form.partName || !form.reason}
+            type="submit"
+          >
+            {isSaving ? <Loader2 className="animate-spin" size={16} /> : saveStatus === "saved" ? <Check size={16} /> : <Save size={16} />}
+            {isSaving ? "Saving..." : saveStatus === "saved" ? "Saved" : "Save Row"}
           </Button>
         </form>
 
@@ -291,7 +323,7 @@ export default function QualityPage() {
             <input
               className="form-control h-11 rounded-xl border border-border bg-white pl-10 pr-10 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search machine, part, reason, cause"
+              placeholder="Search machine, part, reason, CR/MR"
               value={search}
             />
             {search ? (
@@ -337,7 +369,6 @@ export default function QualityPage() {
                 { label: "Machine", value: row.machineNumber },
                 { label: "Rejection", value: row.rejectionQuantity },
                 { label: "Reason", value: row.reason },
-                { label: "Cause", value: row.cause },
                 { label: "Updated", value: formatDateTime(row.timestamp) },
               ]}
               subtitle={`${formatDate(row.date)} · Shift ${row.shift}`}
@@ -349,7 +380,7 @@ export default function QualityPage() {
         </div>
 
         <div className="table-scroll hidden md:block">
-          <table className="data-table w-full min-w-[1180px] border-collapse text-left text-sm">
+          <table className="data-table w-full min-w-[1080px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs uppercase text-muted-foreground">
                 <th className="py-3 pr-4">Date</th>
@@ -359,7 +390,6 @@ export default function QualityPage() {
                 <th className="py-3 pr-4">Part Name</th>
                 <th className="py-3 pr-4">Rejection Qty.</th>
                 <th className="py-3 pr-4">Reason</th>
-                <th className="py-3 pr-4">Cause</th>
                 <th className="py-3 pr-4">CR / MR</th>
                 <th className="py-3 pr-4">Remarks</th>
                 <th className="py-3 pr-4">Updated</th>
@@ -376,7 +406,6 @@ export default function QualityPage() {
                   <td className="wrap-cell py-4 pr-4 text-slate-700">{row.partName}</td>
                   <td className="py-4 pr-4 font-semibold text-slate-950">{row.rejectionQuantity}</td>
                   <td className="wrap-cell py-4 pr-4 text-slate-700">{row.reason}</td>
-                  <td className="wrap-cell py-4 pr-4 text-slate-700">{row.cause}</td>
                   <td className="table-actions py-4 pr-4">
                     <Badge tone={row.crMr === "MR" ? "warning" : "danger"}>{row.crMr}</Badge>
                   </td>
@@ -415,7 +444,7 @@ export default function QualityPage() {
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-slate-950">Edit daily rejection row</h2>
-                <p className="text-sm text-muted-foreground">Update machine, part, rejection details, and root-cause data.</p>
+                <p className="text-sm text-muted-foreground">Update machine, part, rejection details, and remarks.</p>
               </div>
               <button
                 className="rounded-xl border border-border p-2 text-slate-600"
@@ -430,12 +459,12 @@ export default function QualityPage() {
               </button>
             </div>
             <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" onSubmit={handleSubmit}>
-              <Field label="Date" onChange={(value) => setForm((current) => ({ ...current, date: value }))} placeholder="" type="date" value={form.date} />
+              <Field label="Date" onChange={(value) => updateForm({ date: value })} placeholder="" type="date" value={form.date} />
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-800">Shift</span>
                 <select
                   className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
-                  onChange={(event) => setForm((current) => ({ ...current, shift: event.target.value as QualityRejection["shift"] }))}
+                  onChange={(event) => updateForm({ shift: event.target.value as QualityRejection["shift"] })}
                   value={form.shift}
                 >
                   <option value="A">A</option>
@@ -443,17 +472,16 @@ export default function QualityPage() {
                   <option value="C">C</option>
                 </select>
               </label>
-              <Field label="S. No." onChange={(value) => setForm((current) => ({ ...current, serialNumber: value }))} placeholder="1" value={form.serialNumber} />
-              <Field label="Machine Number" onChange={(value) => setForm((current) => ({ ...current, machineNumber: value }))} placeholder="CNC-08" value={form.machineNumber} />
-              <Field label="Part Name" onChange={(value) => setForm((current) => ({ ...current, partName: value }))} placeholder="Ring Cap" value={form.partName} />
-              <Field label="Rejection Qty." onChange={(value) => setForm((current) => ({ ...current, rejectionQuantity: Number(value || 0) }))} placeholder="1" type="number" value={String(form.rejectionQuantity)} />
-              <Field label="Reason" onChange={(value) => setForm((current) => ({ ...current, reason: value }))} placeholder="Thread not OK" value={form.reason} />
-              <Field label="Cause" onChange={(value) => setForm((current) => ({ ...current, cause: value }))} placeholder="Variation" value={form.cause} />
+              <Field label="S. No." onChange={(value) => updateForm({ serialNumber: value })} placeholder="1" value={form.serialNumber} />
+              <Field label="Machine Number" onChange={(value) => updateForm({ machineNumber: value })} placeholder="CNC-08" value={form.machineNumber} />
+              <Field label="Part Name" onChange={(value) => updateForm({ partName: value })} placeholder="Ring Cap" value={form.partName} />
+              <Field label="Rejection Qty." onChange={(value) => updateForm({ rejectionQuantity: Number(value || 0) })} placeholder="1" type="number" value={String(form.rejectionQuantity)} />
+              <Field label="Reason" onChange={(value) => updateForm({ reason: value })} placeholder="Thread not OK" value={form.reason} />
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-800">CR / MR</span>
                 <select
                   className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
-                  onChange={(event) => setForm((current) => ({ ...current, crMr: event.target.value as QualityRejection["crMr"] }))}
+                  onChange={(event) => updateForm({ crMr: event.target.value as QualityRejection["crMr"] })}
                   value={form.crMr}
                 >
                   <option value="MR">MR</option>
@@ -464,14 +492,14 @@ export default function QualityPage() {
                 <span className="mb-2 block text-sm font-medium text-slate-800">Remarks</span>
                 <textarea
                   className="form-control min-h-24 rounded-xl border border-border px-3 py-2 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
-                  onChange={(event) => setForm((current) => ({ ...current, remarks: event.target.value }))}
+                  onChange={(event) => updateForm({ remarks: event.target.value })}
                   value={form.remarks}
                 />
               </label>
               <div className="flex items-end gap-3 md:col-span-2 xl:col-span-3">
-                <Button className="h-11 rounded-xl" disabled={!form.serialNumber || !form.machineNumber || !form.partName || !form.reason || !form.cause} type="submit">
-                  <Save size={16} />
-                  Save Changes
+                <Button className="h-11 rounded-xl" disabled={isSaving || !form.serialNumber || !form.machineNumber || !form.partName || !form.reason} type="submit">
+                  {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                  {isSaving ? "Saving..." : "Save Changes"}
                 </Button>
                 <button
                   className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700"
@@ -505,7 +533,6 @@ const qualityExportColumns = [
   { label: "Part Name", value: (row: QualityRejection) => row.partName },
   { label: "Rejection Qty.", value: (row: QualityRejection) => row.rejectionQuantity },
   { label: "Reason", value: (row: QualityRejection) => row.reason },
-  { label: "Cause", value: (row: QualityRejection) => row.cause },
   { label: "CR / MR", value: (row: QualityRejection) => row.crMr },
   { label: "Remarks", value: (row: QualityRejection) => row.remarks || "-" },
   { label: "Updated", value: (row: QualityRejection) => formatDateTime(row.timestamp) },

@@ -52,6 +52,7 @@ export default function ProductionPage() {
   const [summary, setSummary] = useState<ProductionSummary | null>(null);
   const [machineAnalytics, setMachineAnalytics] = useState<MachineAnalyticsRow[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [logsPage, setLogsPage] = useState(1);
@@ -72,23 +73,22 @@ export default function ProductionPage() {
     if (initialSearch) {
       setSearch(initialSearch);
     }
+  }, []);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => {
     void loadProductionData();
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, debouncedSearch]);
 
   const filteredEntries = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return entries;
-
-    return entries.filter((entry) =>
-      [
-        entry.machine_number,
-        entry.operator_name,
-        entry.part_number,
-        entry.part_name,
-        entry.remarks ?? "",
-      ].some((value) => value.toLowerCase().includes(query)),
-    );
-  }, [entries, search]);
+    return entries;
+  }, [entries]);
 
   const logsTotalPages = Math.max(1, Math.ceil(filteredEntries.length / LOG_PAGE_SIZE));
   const paginatedEntries = filteredEntries.slice((logsPage - 1) * LOG_PAGE_SIZE, logsPage * LOG_PAGE_SIZE);
@@ -125,6 +125,7 @@ export default function ProductionPage() {
 
     try {
       const params = {
+        search: debouncedSearch || undefined,
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
       };

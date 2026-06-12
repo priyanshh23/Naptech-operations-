@@ -17,7 +17,7 @@ export default function LoginPage() {
       <div className="pointer-events-none absolute right-[-7rem] top-[-5rem] h-72 w-72 rounded-full border-[28px] border-[#19C93B]/10" />
       <div className="pointer-events-none absolute bottom-[-6rem] left-[-6rem] h-64 w-64 rounded-full border-[24px] border-[#19C93B]/10" />
 
-      <section className="relative z-10 mx-auto grid h-screen max-w-[1600px] items-center gap-4 px-3 py-3 md:px-4 md:py-4 xl:grid-cols-[1fr_0.92fr] xl:gap-6 xl:px-6 xl:py-6">
+      <section className="relative z-10 mx-auto grid h-screen max-w-[1600px] items-center gap-4 px-3 py-3 md:px-4 md:py-4 lg:grid-cols-[1fr_0.92fr] xl:gap-6 xl:px-6 xl:py-6">
         <BrandingPanel />
         <LoginForm />
       </section>
