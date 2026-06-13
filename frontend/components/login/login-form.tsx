@@ -44,6 +44,17 @@ export function LoginForm() {
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
+    const existingToken = window.localStorage.getItem("naptech_access_token");
+    const existingUser = window.localStorage.getItem("naptech_user");
+    if (existingToken && existingUser) {
+      router.replace("/dashboard");
+      return;
+    }
+    if (existingToken && !existingUser) {
+      window.localStorage.removeItem("naptech_access_token");
+      window.localStorage.removeItem("naptech_demo_session");
+    }
+
     if (!googleClientId || document.getElementById("google-identity-script")) return;
     const script = document.createElement("script");
     script.id = "google-identity-script";
@@ -73,8 +84,8 @@ export function LoginForm() {
     window.localStorage.removeItem("naptech_demo_session");
 
     const formData = new FormData(event.currentTarget);
-    const email = String(formData.get("email"));
-    const password = String(formData.get("password"));
+    const email = String(formData.get("email")).trim();
+    const password = String(formData.get("password")).trim();
 
     try {
       const response = await login(email, password);
@@ -100,7 +111,7 @@ export function LoginForm() {
         return;
       }
       if (normalized.includes("invalid email or password")) {
-        setError("Invalid email or password. Use an approved account with the correct password.");
+        setError("Invalid email or password. For local approved accounts, use password: password.");
         return;
       }
       if (normalized.includes("access denied") || normalized.includes("approved company account")) {

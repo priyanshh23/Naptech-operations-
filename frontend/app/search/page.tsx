@@ -7,9 +7,30 @@ import { useEffect, useMemo, useState } from "react";
 
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { Badge, Card, PageHeader } from "@/components/ui";
-import { getDashboardSummary, getInventoryLogs, getMaintenanceJobs, getNotifications, getProductionEntries, getQualityRejections } from "@/lib/api";
+import {
+  getCalibrationSheets,
+  getDashboardSummary,
+  getGaugeHistoryCards,
+  getGaugeInventory,
+  getGaugeStock,
+  getInventoryLogs,
+  getMaintenanceJobs,
+  getNotifications,
+  getProductionEntries,
+  getQualityRejections,
+} from "@/lib/api";
 import { formatDate, formatDateTime } from "@/lib/format";
-import type { InventoryEntry, MaintenanceJob, Notification, ProductionEntry, QualityRejection } from "@/lib/types";
+import type {
+  CalibrationSheet,
+  GaugeHistoryCard,
+  GaugeInventory,
+  GaugeStock,
+  InventoryEntry,
+  MaintenanceJob,
+  Notification,
+  ProductionEntry,
+  QualityRejection,
+} from "@/lib/types";
 
 type OverviewResult = {
   title: string;
@@ -23,6 +44,10 @@ export default function SearchPage() {
   const [inventory, setInventory] = useState<InventoryEntry[]>([]);
   const [production, setProduction] = useState<ProductionEntry[]>([]);
   const [quality, setQuality] = useState<QualityRejection[]>([]);
+  const [gaugeInventory, setGaugeInventory] = useState<GaugeInventory[]>([]);
+  const [gaugeStock, setGaugeStock] = useState<GaugeStock[]>([]);
+  const [calibrationSheets, setCalibrationSheets] = useState<CalibrationSheet[]>([]);
+  const [gaugeHistoryCards, setGaugeHistoryCards] = useState<GaugeHistoryCard[]>([]);
   const [maintenance, setMaintenance] = useState<MaintenanceJob[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [overview, setOverview] = useState<OverviewResult[]>([]);
@@ -42,10 +67,25 @@ export default function SearchPage() {
 
     try {
       const normalized = term.toLowerCase();
-      const [inventoryResponse, productionResponse, qualityResponse, maintenanceResponse, notificationResponse, dashboardResponse] = await Promise.all([
+      const [
+        inventoryResponse,
+        productionResponse,
+        qualityResponse,
+        gaugeInventoryResponse,
+        gaugeStockResponse,
+        calibrationResponse,
+        gaugeHistoryResponse,
+        maintenanceResponse,
+        notificationResponse,
+        dashboardResponse,
+      ] = await Promise.all([
         getInventoryLogs({ page: 1, page_size: 8, search: term || undefined }),
         getProductionEntries({ search: term || undefined }),
         getQualityRejections({ search: term || undefined }),
+        getGaugeInventory({ search: term || undefined }),
+        getGaugeStock({ search: term || undefined }),
+        getCalibrationSheets({ search: term || undefined }),
+        getGaugeHistoryCards({ search: term || undefined }),
         getMaintenanceJobs({ search: term || undefined }),
         getNotifications(),
         getDashboardSummary(),
@@ -59,6 +99,10 @@ export default function SearchPage() {
           .slice(0, 8),
       );
       setQuality(qualityResponse.items.slice(0, 8));
+      setGaugeInventory(gaugeInventoryResponse.items.slice(0, 8));
+      setGaugeStock(gaugeStockResponse.items.slice(0, 8));
+      setCalibrationSheets(calibrationResponse.items.slice(0, 8));
+      setGaugeHistoryCards(gaugeHistoryResponse.items.slice(0, 8));
       setMaintenance(maintenanceResponse.items.slice(0, 8));
       setOverview(buildOverviewResults(normalized, dashboardResponse));
     } catch (error) {
@@ -69,8 +113,29 @@ export default function SearchPage() {
   }
 
   const totalResults = useMemo(
-    () => inventory.length + production.length + quality.length + maintenance.length + notifications.length + overview.length,
-    [inventory.length, production.length, quality.length, maintenance.length, notifications.length, overview.length],
+    () =>
+      inventory.length +
+      production.length +
+      quality.length +
+      gaugeInventory.length +
+      gaugeStock.length +
+      calibrationSheets.length +
+      gaugeHistoryCards.length +
+      maintenance.length +
+      notifications.length +
+      overview.length,
+    [
+      inventory.length,
+      production.length,
+      quality.length,
+      gaugeInventory.length,
+      gaugeStock.length,
+      calibrationSheets.length,
+      gaugeHistoryCards.length,
+      maintenance.length,
+      notifications.length,
+      overview.length,
+    ],
   );
 
   return (
@@ -125,6 +190,10 @@ export default function SearchPage() {
           <InventorySection items={inventory} query={query} />
           <ProductionSection items={production} query={query} />
           <QualitySection items={quality} query={query} />
+          <GaugeInventorySection items={gaugeInventory} query={query} />
+          <GaugeStockSection items={gaugeStock} query={query} />
+          <CalibrationSheetSection items={calibrationSheets} query={query} />
+          <GaugeHistorySection items={gaugeHistoryCards} query={query} />
           <MaintenanceSection items={maintenance} query={query} />
           <NotificationSection items={notifications} />
         </div>
@@ -173,14 +242,78 @@ function ProductionSection({ items, query }: Readonly<{ items: ProductionEntry[]
 
 function QualitySection({ items, query }: Readonly<{ items: QualityRejection[]; query: string }>) {
   return (
-    <SearchBlock href={`/quality?search=${encodeURIComponent(query)}`} icon={<Shield size={18} />} title="Quality">
+    <SearchBlock href={qualityHref(query, "rejections")} icon={<Shield size={18} />} title="Quality - Daily Rejection Report">
       {items.map((item) => (
         <ResultRow
           badge={item.crMr}
-          description={`${formatDate(item.date)} | ${item.machineNumber} | ${item.reason}`}
-          href={`/quality?search=${encodeURIComponent(item.machineNumber || item.partName)}`}
+          description={`${formatDate(item.date)} | ${item.machineNumber} | ${item.reason} | ${item.cause}`}
+          href={qualityHref(item.machineNumber || item.partName, "rejections")}
           key={item.id}
           title={item.partName}
+        />
+      ))}
+    </SearchBlock>
+  );
+}
+
+function GaugeInventorySection({ items, query }: Readonly<{ items: GaugeInventory[]; query: string }>) {
+  return (
+    <SearchBlock href={qualityHref(query, "gaugeInventory")} icon={<Shield size={18} />} title="Quality - Gauge Inventory">
+      {items.map((item) => (
+        <ResultRow
+          badge={item.gaugeNo}
+          description={`${item.gaugeSpecification} | ${item.gaugeType} | Qty ${item.gaugeQty} | ${item.gaugeCompany}`}
+          href={qualityHref(item.gaugeNo || item.gaugeName, "gaugeInventory")}
+          key={item.id}
+          title={item.gaugeName}
+        />
+      ))}
+    </SearchBlock>
+  );
+}
+
+function GaugeStockSection({ items, query }: Readonly<{ items: GaugeStock[]; query: string }>) {
+  return (
+    <SearchBlock href={qualityHref(query, "gaugeStock")} icon={<Shield size={18} />} title="Quality - Gauge Stock">
+      {items.map((item) => (
+        <ResultRow
+          badge={`Qty ${item.gaugeStockQty}`}
+          description={`${item.gaugeType} | ${item.gaugePartName}`}
+          href={qualityHref(item.gaugePartName || item.gaugeType, "gaugeStock")}
+          key={item.id}
+          title={item.gaugePartName}
+        />
+      ))}
+    </SearchBlock>
+  );
+}
+
+function CalibrationSheetSection({ items, query }: Readonly<{ items: CalibrationSheet[]; query: string }>) {
+  return (
+    <SearchBlock href={qualityHref(query, "calibrationSheet")} icon={<Shield size={18} />} title="Quality - Calibration Sheet">
+      {items.map((item) => (
+        <ResultRow
+          badge={item.equipmentNo}
+          description={`${item.make} | ${item.rangeSize} | Due ${item.calibrationDueOn} | ${item.location}`}
+          href={qualityHref(item.equipmentNo || item.equipmentName, "calibrationSheet")}
+          key={item.id}
+          title={item.equipmentName}
+        />
+      ))}
+    </SearchBlock>
+  );
+}
+
+function GaugeHistorySection({ items, query }: Readonly<{ items: GaugeHistoryCard[]; query: string }>) {
+  return (
+    <SearchBlock href={qualityHref(query, "gaugeHistory")} icon={<Shield size={18} />} title="Quality - Gauge History Card">
+      {items.map((item) => (
+        <ResultRow
+          badge={item.controlNo}
+          description={`${item.inspectionItem} | ${item.specification} | Due ${item.dueDate} | ${item.judgment}`}
+          href={qualityHref(item.controlNo || item.description, "gaugeHistory")}
+          key={item.id}
+          title={item.description}
         />
       ))}
     </SearchBlock>
@@ -201,6 +334,13 @@ function MaintenanceSection({ items, query }: Readonly<{ items: MaintenanceJob[]
       ))}
     </SearchBlock>
   );
+}
+
+function qualityHref(search: string, tab: string) {
+  const params = new URLSearchParams();
+  if (search.trim()) params.set("search", search.trim());
+  params.set("tab", tab);
+  return `/quality?${params.toString()}`;
 }
 
 function NotificationSection({ items }: Readonly<{ items: Notification[] }>) {

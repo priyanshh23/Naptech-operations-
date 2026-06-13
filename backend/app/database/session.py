@@ -8,8 +8,12 @@ from app.utils.config import settings
 
 
 def _resolve_database_url() -> str:
-    # Prefer Supabase DB URL when provided, otherwise keep existing local DB URL.
-    database_url = settings.supabase_database_url.strip() or settings.database_url
+    # Local development should stay fast and stable even when a Supabase URL is present
+    # for hosted deployments. Production still prefers Supabase when configured.
+    if settings.environment.strip().lower() == "development":
+        database_url = settings.database_url or settings.supabase_database_url.strip()
+    else:
+        database_url = settings.supabase_database_url.strip() or settings.database_url
     if not database_url:
         return settings.database_url
 

@@ -21,6 +21,7 @@ class QualityRejection(Base):
     reason: Mapped[str] = mapped_column(String(255), nullable=False)
     cause: Mapped[str] = mapped_column(String(255), nullable=False)
     cr_mr: Mapped[str] = mapped_column(String(10), index=True, nullable=False)
+    job_work: Mapped[str] = mapped_column(String(10), nullable=False, default="No")
     remarks: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_by: Mapped[str] = mapped_column(String(120), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)

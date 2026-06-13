@@ -286,7 +286,7 @@ export function DashboardShell({
           </div>
 
           <div className={cn("mt-3 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between", profileOpen && "pt-10 sm:pt-0")}>
-            <div className="min-w-0">
+            <div className={cn("min-w-0", headerActions && "xl:max-w-[420px] 2xl:max-w-[560px]")}>
               <h1 className="text-xl font-semibold tracking-normal text-[#111827] dark:text-white sm:text-2xl">Factory Overview</h1>
               <p className="mt-1 text-sm text-[#6B7280] dark:text-slate-400">Inventory, production, quality, and maintenance in one operational view.</p>
             </div>

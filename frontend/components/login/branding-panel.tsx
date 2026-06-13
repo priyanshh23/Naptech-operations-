@@ -26,8 +26,9 @@ export function BrandingPanel() {
   return (
     <motion.section
       animate={{ opacity: 1, y: 0 }}
-      className="relative hidden h-full min-h-0 overflow-hidden rounded-[24px] border border-white/8 bg-[#020B14] lg:flex lg:flex-col lg:justify-between"
+      className="relative hidden h-full min-h-0 overflow-hidden rounded-[24px] border border-white/8 bg-[#020B14] bg-cover bg-center lg:flex lg:flex-col lg:justify-between"
       initial={{ opacity: 0, y: 18 }}
+      style={{ backgroundImage: "url('/factory-login-bg.png')" }}
       transition={{ duration: 0.55, ease: "easeOut" }}
     >
       <Image
@@ -35,7 +36,9 @@ export function BrandingPanel() {
         className="absolute inset-0 h-full w-full object-cover"
         fill
         priority
+        sizes="(min-width: 1024px) 52vw, 0px"
         src="/factory-login-bg.png"
+        unoptimized
       />
 
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,11,20,0.24)_0%,rgba(2,11,20,0.88)_48%,rgba(2,11,20,0.97)_100%)]" />
@@ -64,7 +67,7 @@ export function BrandingPanel() {
           <p className="mb-3 inline-flex rounded-full border border-[#19C93B]/25 bg-white/6 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#A3FF12] backdrop-blur-sm xl:text-xs">
             Industrial intelligence for Indian manufacturing
           </p>
-          <h1 className="max-w-xl text-[38px] font-semibold leading-[0.98] text-white lg:text-[44px] xl:max-w-2xl xl:text-[58px]">
+          <h1 className="max-w-xl text-[36px] font-semibold leading-[0.98] text-white lg:text-[42px] xl:max-w-2xl xl:text-[58px]">
             Run your factory.
             <span className="mt-2 block bg-[linear-gradient(90deg,#A3FF12_0%,#19C93B_55%,#C9FFD9_100%)] bg-clip-text text-transparent">
               Better. Faster. Smarter.

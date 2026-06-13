@@ -1,21 +1,22 @@
 "use client";
 
-import { Activity, AlertTriangle, Boxes, CalendarDays, CheckCircle2, Download, Factory, FileText, Loader2, Shield, Wrench } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Activity, AlertTriangle, ArrowRight, Boxes, CalendarDays, CheckCircle2, Download, Factory, FileText, Loader2, Shield, Wrench } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ActivityTimeline } from "@/components/dashboard/activity-timeline";
 import { AlertsPanel } from "@/components/dashboard/alerts-panel";
-import { InventoryOverview, ProductionOverview } from "@/components/dashboard/charts";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { ActiveTasksTable, LowStockTable } from "@/components/dashboard/tables";
 import { AccessDenied } from "@/components/dashboard/access-denied";
+import { DatePickerField } from "@/components/ui/date-picker-field";
 import { Card } from "@/components/ui";
 import { getDashboardSummary } from "@/lib/api";
 import { downloadExcelSections, printPdfSections } from "@/lib/export-utils";
 import { useStoredUser } from "@/lib/permissions";
 import type { DashboardSummary } from "@/lib/types";
+import dynamic from "next/dynamic";
 import type {
   ActiveProductionTask,
   AlertItem,
@@ -36,8 +37,24 @@ type DepartmentOverview = {
   href: string;
   icon: typeof Boxes;
   color: string;
-  bars: number[];
+  actionLabel: string;
+  helperText: string;
 };
+
+type InsightChartRow = {
+  name: string;
+  value: number;
+  color: string;
+};
+
+const InventoryOverview = dynamic(
+  () => import("@/components/dashboard/charts").then((module) => module.InventoryOverview),
+  { loading: () => <ChartSkeleton title="Inventory Overview" /> },
+);
+const ProductionOverview = dynamic(
+  () => import("@/components/dashboard/charts").then((module) => module.ProductionOverview),
+  { loading: () => <ChartSkeleton title="Production Overview" /> },
+);
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -55,11 +72,11 @@ export default function DashboardPage() {
 
     try {
       const response = await getDashboardSummary({
-          date_from: dateFrom || undefined,
-          date_to: dateTo || undefined,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
       });
       setSummary(response);
-      lastRefreshAtRef.current = Date.now();
+      void loadDepartmentRows();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to load live dashboard data.";
       setError(message);
@@ -72,7 +89,10 @@ export default function DashboardPage() {
     if (isReady && canAccessDashboard) {
       void loadDashboard();
     }
-  }, [isReady, canAccessDashboard, loadDashboard]);
+    // Date filters are applied from the Refresh button, so typing a date never
+    // sends partial values like "2" or "12/" to the backend.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReady, canAccessDashboard]);
 
   useEffect(() => {
     if (!isReady || !canAccessDashboard) return;
@@ -93,12 +113,10 @@ export default function DashboardPage() {
 
     window.addEventListener("naptech:data-changed", refreshDashboard);
     window.addEventListener("storage", refreshOnStorage);
-    window.addEventListener("focus", refreshOnFocus);
 
     return () => {
       window.removeEventListener("naptech:data-changed", refreshDashboard);
       window.removeEventListener("storage", refreshOnStorage);
-      window.removeEventListener("focus", refreshOnFocus);
     };
   }, [isReady, canAccessDashboard, loadDashboard]);
 
@@ -233,7 +251,8 @@ export default function DashboardPage() {
       href: "/inventory-logs",
       icon: Boxes,
       color: "#19C93B",
-      bars: [summary?.total_in_quantity ?? 0, summary?.total_out_quantity ?? 0, summary?.total_rejections ?? 0],
+      actionLabel: "Check stock",
+      helperText: summary?.low_stock_count ? "Some parts are below minimum stock." : "Stock is above the low-stock limit.",
     },
     {
       department: "Production",
@@ -245,7 +264,8 @@ export default function DashboardPage() {
       href: "/production",
       icon: Factory,
       color: "#38BDF8",
-      bars: movementSeries.length ? movementSeries.map((item) => item.completed) : [0, 0, 0],
+      actionLabel: "Open production",
+      helperText: summary?.delayed_tasks ? "Some production tasks are delayed." : "No delayed production task is visible.",
     },
     {
       department: "Quality",
@@ -257,7 +277,8 @@ export default function DashboardPage() {
       href: "/quality",
       icon: Shield,
       color: "#F59E0B",
-      bars: [qualityTotals.mr, qualityTotals.cr, qualityTotals.rejection],
+      actionLabel: "Review quality",
+      helperText: qualityTotals.rejection ? "Rejections are logged and need quality tracking." : "No rejection quantity is logged.",
     },
     {
       department: "Maintenance",
@@ -269,9 +290,44 @@ export default function DashboardPage() {
       href: "/maintenance",
       icon: Wrench,
       color: "#A855F7",
-      bars: [maintenanceTotals.open, maintenanceTotals.high, maintenanceTotals.completed],
+      actionLabel: "View jobs",
+      helperText: maintenanceTotals.high ? "High-priority maintenance needs attention." : "No high-priority job is open.",
     },
-  ], [maintenanceTotals, movementSeries, qualityTotals, summary]);
+  ], [maintenanceTotals, qualityTotals, summary]);
+  const productionCompletedTotal = useMemo(
+    () => movementSeries.reduce((sum, item) => sum + Number(item.completed || 0), 0),
+    [movementSeries],
+  );
+  const productionPlannedTotal = useMemo(
+    () => movementSeries.reduce((sum, item) => sum + Number(item.planned || 0), 0),
+    [movementSeries],
+  );
+  const factoryFlowData: InsightChartRow[] = useMemo(() => [
+    { name: "Material In", value: summary?.total_in_quantity ?? 0, color: "#19C93B" },
+    { name: "Material Out", value: summary?.total_out_quantity ?? 0, color: "#38BDF8" },
+    { name: "Production Done", value: productionCompletedTotal, color: "#A3FF12" },
+    { name: "Quality Reject", value: qualityTotals.rejection, color: "#F59E0B" },
+    { name: "Open Maint.", value: maintenanceTotals.open, color: "#A855F7" },
+  ], [maintenanceTotals.open, productionCompletedTotal, qualityTotals.rejection, summary]);
+  const attentionData: InsightChartRow[] = useMemo(() => [
+    { name: "Low Stock", value: summary?.low_stock_count ?? 0, color: "#EF4444" },
+    { name: "Production Delays", value: summary?.delayed_tasks ?? 0, color: "#F97316" },
+    { name: "Quality Rejections", value: qualityTotals.rejection, color: "#F59E0B" },
+    { name: "High Priority Maint.", value: maintenanceTotals.high, color: "#A855F7" },
+  ], [maintenanceTotals.high, qualityTotals.rejection, summary]);
+  const healthData: InsightChartRow[] = useMemo(() => {
+    const productionHealth = productionPlannedTotal > 0 ? Math.min(100, Math.round((productionCompletedTotal / productionPlannedTotal) * 100)) : 100;
+    const inventoryHealth = summary?.low_stock_count ? 70 : 100;
+    const qualityHealth = qualityTotals.rejection ? Math.max(40, 100 - Math.min(60, qualityTotals.rejection * 5)) : 100;
+    const maintenanceHealth = maintenanceTotals.open ? Math.max(45, 100 - Math.min(55, maintenanceTotals.open * 8)) : 100;
+
+    return [
+      { name: "Inventory", value: inventoryHealth, color: "#19C93B" },
+      { name: "Production", value: productionHealth, color: "#38BDF8" },
+      { name: "Quality", value: qualityHealth, color: "#F59E0B" },
+      { name: "Maintenance", value: maintenanceHealth, color: "#A855F7" },
+    ];
+  }, [maintenanceTotals.open, productionCompletedTotal, productionPlannedTotal, qualityTotals.rejection, summary]);
 
   if (isReady && !canAccessDashboard) {
     return (
@@ -285,33 +341,22 @@ export default function DashboardPage() {
     <DashboardShell
       headerActions={
         <>
-          <div className="grid w-full min-w-0 max-w-full grid-cols-1 gap-2 overflow-hidden sm:grid-cols-2 xl:w-auto xl:grid-cols-[160px_160px_auto_auto_auto_auto]">
+          <div className="grid w-full min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:w-[min(60vw,820px)] xl:grid-cols-[160px_160px_88px_96px_112px_104px]">
             <label className="block">
               <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
                 <CalendarDays size={13} />
                 From Date
               </span>
-              <input
-                className="form-control h-11 rounded-xl border border-border bg-white px-3 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
-                onChange={(event) => setDateFrom(event.target.value)}
-                type="date"
-                value={dateFrom}
-              />
+              <DatePickerField displayFormat="sheet" inputClassName="h-11 w-full rounded-xl border border-border bg-white px-3 pr-10 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10" onChange={setDateFrom} placeholder="dd/mm/yyyy" value={dateFrom} />
             </label>
             <label className="block">
               <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
                 To Date
               </span>
-              <input
-                className="form-control h-11 rounded-xl border border-border bg-white px-3 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
-                min={dateFrom || undefined}
-                onChange={(event) => setDateTo(event.target.value)}
-                type="date"
-                value={dateTo}
-              />
+              <DatePickerField displayFormat="sheet" inputClassName="h-11 w-full rounded-xl border border-border bg-white px-3 pr-10 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10" min={dateFrom || undefined} onChange={setDateTo} placeholder="dd/mm/yyyy" value={dateTo} />
             </label>
             <button
-              className="h-11 w-full self-end rounded-xl border border-border bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+              className="h-11 w-full self-end rounded-xl border border-border bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
               disabled={isLoading}
               onClick={() => void loadDashboard()}
               type="button"
@@ -319,7 +364,7 @@ export default function DashboardPage() {
               {isLoading ? "Refreshing..." : "Refresh"}
             </button>
             <button
-              className="h-11 w-full self-end rounded-xl border border-border bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+              className="h-11 w-full self-end rounded-xl border border-border bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
               disabled={!dateFrom && !dateTo}
               onClick={() => {
                 setDateFrom("");
@@ -330,7 +375,7 @@ export default function DashboardPage() {
               Clear Range
             </button>
             <button
-              className="flex h-11 w-full self-end items-center justify-center gap-2 rounded-xl bg-[#19C93B] px-4 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(25,201,59,0.25)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex h-11 w-full self-end items-center justify-center gap-1.5 rounded-xl bg-[#19C93B] px-2.5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(25,201,59,0.25)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={!summary}
               onClick={exportExcelReport}
               type="button"
@@ -339,7 +384,7 @@ export default function DashboardPage() {
               Excel Report
             </button>
             <button
-              className="flex h-11 w-full self-end items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+              className="flex h-11 w-full self-end items-center justify-center gap-1.5 rounded-xl border border-border bg-white px-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
               disabled={!summary}
               onClick={exportPdfReport}
               type="button"
@@ -387,6 +432,20 @@ export default function DashboardPage() {
             </div>
           </section>
 
+          <section className="mt-4">
+            <div className="mb-3">
+              <h2 className="text-xl font-semibold text-[#111827] dark:text-white">Factory Visual Insights</h2>
+              <p className="mt-1 text-sm text-[#6B7280] dark:text-slate-400">
+                Visual checks for flow, health, and attention areas across the full dashboard.
+              </p>
+            </div>
+            <div className="grid gap-4 xl:grid-cols-12">
+              <FactoryFlowCard data={factoryFlowData} delay={0.2} title="Today's Factory Flow" />
+              <HealthScoreChart data={healthData} delay={0.24} title="Department Health" />
+              <AttentionPieChart data={attentionData} delay={0.28} title="Needs Attention" />
+            </div>
+          </section>
+
           <section className="mt-4 grid gap-4 xl:grid-cols-12">
             <InventoryOverview data={inventoryCategories} totalBalance={summary.total_inventory} />
             <ProductionOverview data={movementSeries} />
@@ -409,15 +468,13 @@ export default function DashboardPage() {
 
 function DepartmentOverviewCard({ delay, item }: Readonly<{ delay: number; item: DepartmentOverview }>) {
   const Icon = item.icon;
-  const max = Math.max(...item.bars, 1);
 
   return (
-    <DashboardCard className="min-h-[190px] p-4" delay={delay}>
+    <DashboardCard className="min-h-[210px] p-4" delay={delay}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[#6B7280] dark:text-slate-400">{item.department}</p>
-          <p className="mt-2 text-2xl font-semibold text-[#111827] dark:text-white">{item.primaryValue}</p>
-          <p className="mt-1 text-xs text-[#6B7280] dark:text-slate-400">{item.primaryMetric}</p>
+          <p className="text-base font-semibold text-[#111827] dark:text-white">{item.department}</p>
+          <p className="mt-1 text-sm leading-5 text-[#6B7280] dark:text-slate-400">{item.helperText}</p>
         </div>
         <a
           className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/5"
@@ -427,26 +484,147 @@ function DepartmentOverviewCard({ delay, item }: Readonly<{ delay: number; item:
           <Icon size={19} />
         </a>
       </div>
-      <div className="mt-4 flex items-end gap-2">
-        {item.bars.slice(0, 6).map((value, index) => (
-          <div className="flex h-16 flex-1 items-end rounded-lg bg-slate-100/80 p-1 dark:bg-white/5" key={`${item.department}-${index}`}>
-            <div
-              className="w-full rounded-md transition-all duration-700"
-              style={{
-                background: `linear-gradient(180deg, ${item.color}, #19C93B)`,
-                height: `${Math.max(12, (Number(value || 0) / max) * 100)}%`,
-              }}
-            />
+
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="rounded-xl bg-slate-50 p-3 dark:bg-white/5">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6B7280] dark:text-slate-400">{item.primaryMetric}</p>
+          <p className="mt-2 text-2xl font-semibold text-[#111827] dark:text-white">{item.primaryValue}</p>
+        </div>
+        <div className="rounded-xl bg-slate-50 p-3 dark:bg-white/5">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6B7280] dark:text-slate-400">{item.secondaryMetric}</p>
+          <p className="mt-2 text-2xl font-semibold text-[#111827] dark:text-white">{item.secondaryValue}</p>
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-white/10 dark:bg-white/5">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6B7280] dark:text-slate-400">Status</p>
+          <p className="mt-1 truncate text-sm font-semibold" style={{ color: item.color }}>{item.status}</p>
+        </div>
+        <a className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold" href={item.href} style={{ color: item.color }}>
+          {item.actionLabel}
+          <ArrowRight size={14} />
+        </a>
+      </div>
+    </DashboardCard>
+  );
+}
+
+function FactoryFlowCard({ data, delay, title }: Readonly<{ data: InsightChartRow[]; delay: number; title: string }>) {
+  const materialIn = data.find((item) => item.name === "Material In")?.value ?? 0;
+  const productionDone = data.find((item) => item.name === "Production Done")?.value ?? 0;
+  const materialOut = data.find((item) => item.name === "Material Out")?.value ?? 0;
+  const qualityReject = data.find((item) => item.name === "Quality Reject")?.value ?? 0;
+  const openMaintenance = data.find((item) => item.name === "Open Maint.")?.value ?? 0;
+  const steps = [
+    { label: "Material In", value: materialIn, color: "#19C93B" },
+    { label: "Production Done", value: productionDone, color: "#38BDF8" },
+    { label: "Material Out", value: materialOut, color: "#A3FF12" },
+  ];
+
+  return (
+    <DashboardCard className="xl:col-span-5" delay={delay}>
+      <InsightTitle description="Simple view of what came in, what was produced, and what went out." title={title} />
+      <div className="mt-5 grid gap-4 md:grid-cols-3 xl:gap-6">
+        {steps.map((step, index) => (
+          <div className="relative rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5" key={step.label}>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6B7280] dark:text-slate-400">{step.label}</p>
+            <p className="mt-3 text-3xl font-semibold text-[#111827] dark:text-white">{step.value.toLocaleString("en-IN")}</p>
+            <div className="mt-4 h-2 rounded-full" style={{ background: step.color }} />
+            {index < steps.length - 1 ? (
+              <span className="absolute -right-4 top-1/2 hidden h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-[#07111A] text-slate-400 dark:border-white/10 md:flex xl:-right-[26px]">
+                <ArrowRight size={14} strokeWidth={2} />
+              </span>
+            ) : null}
           </div>
         ))}
       </div>
-      <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 dark:bg-white/5">
-        <span className="text-xs font-semibold text-[#6B7280] dark:text-slate-400">{item.secondaryMetric}</span>
-        <span className="text-sm font-semibold text-[#111827] dark:text-white">{item.secondaryValue}</span>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <SimpleAlertMetric color="#F59E0B" label="Quality Reject" value={qualityReject} />
+        <SimpleAlertMetric color="#A855F7" label="Open Maintenance" value={openMaintenance} />
       </div>
-      <p className="mt-3 text-xs font-semibold" style={{ color: item.color }}>
-        {item.status}
-      </p>
+    </DashboardCard>
+  );
+}
+
+function SimpleAlertMetric({ color, label, value }: Readonly<{ color: string; label: string; value: number }>) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 dark:border-white/10 dark:bg-white/5">
+      <span className="flex items-center gap-2 text-sm font-semibold text-[#6B7280] dark:text-slate-400">
+        <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+        {label}
+      </span>
+      <span className="text-lg font-semibold text-[#111827] dark:text-white">{value.toLocaleString("en-IN")}</span>
+    </div>
+  );
+}
+
+function HealthScoreChart({ data, delay, title }: Readonly<{ data: InsightChartRow[]; delay: number; title: string }>) {
+  return (
+    <DashboardCard className="xl:col-span-4" delay={delay}>
+      <InsightTitle description="Simple 0-100 scores from stock, production, quality, and maintenance signals." title={title} />
+      <div className="mt-5 space-y-4">
+        {data.map((item) => (
+          <div key={item.name}>
+            <div className="mb-1.5 flex items-center justify-between gap-3">
+              <span className="text-sm font-semibold text-[#111827] dark:text-white">{item.name}</span>
+              <span className="text-sm font-semibold" style={{ color: item.color }}>{item.value}%</span>
+            </div>
+            <div className="h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+              <div className="h-full rounded-full transition-all duration-700" style={{ background: item.color, width: `${item.value}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </DashboardCard>
+  );
+}
+
+function AttentionPieChart({ data, delay, title }: Readonly<{ data: InsightChartRow[]; delay: number; title: string }>) {
+  const max = Math.max(...data.map((item) => item.value), 1);
+
+  return (
+    <DashboardCard className="xl:col-span-3" delay={delay}>
+      <InsightTitle description="Shows where supervisors should look first." title={title} />
+      <div className="mt-5 space-y-3">
+        {data.map((item) => (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/5" key={item.name}>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <span className="min-w-0 truncate text-sm font-semibold text-[#111827] dark:text-white">{item.name}</span>
+              <span className="text-sm font-semibold" style={{ color: item.color }}>{item.value.toLocaleString("en-IN")}</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-white dark:bg-white/10">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{ background: item.color, width: `${Math.max(8, (item.value / max) * 100)}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      {data.every((item) => item.value === 0) ? (
+        <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+          No urgent issue visible.
+        </p>
+      ) : null}
+    </DashboardCard>
+  );
+}
+
+function InsightTitle({ description, title }: Readonly<{ description: string; title: string }>) {
+  return (
+    <div>
+      <h3 className="text-base font-semibold text-[#111827] dark:text-white">{title}</h3>
+      <p className="mt-1 text-sm leading-5 text-[#6B7280] dark:text-slate-400">{description}</p>
+    </div>
+  );
+}
+
+function ChartSkeleton({ title }: Readonly<{ title: string }>) {
+  return (
+    <DashboardCard className="min-h-[320px] xl:col-span-6">
+      <h3 className="text-base font-semibold text-[#111827] dark:text-white">{title}</h3>
+      <div className="mt-5 h-56 animate-pulse rounded-2xl bg-slate-100 dark:bg-white/5" />
     </DashboardCard>
   );
 }

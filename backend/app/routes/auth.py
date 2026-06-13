@@ -98,8 +98,9 @@ def _sync_authorized_role(db: Session, user: User) -> User:
 
 def _ensure_builtin_password_user(db: Session, email: str, password: str) -> Optional[User]:
     normalized_email = email.strip().lower()
-    if password != DEFAULT_PASSWORD or normalized_email not in BUILT_IN_USERS:
-        return None
+    normalized_password = password.strip()
+    if normalized_password != DEFAULT_PASSWORD or normalized_email not in BUILT_IN_USERS:
+        return
 
     name, role = BUILT_IN_USERS[normalized_email]
     existing_user = get_user_by_email(db, normalized_email)
@@ -129,14 +130,11 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthRes
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
     try:
         login_email = str(payload.email).strip().lower()
+        login_password = payload.password.strip()
         _assert_allowed_login(login_email)
+        _ensure_builtin_password_user(db, login_email, login_password)
 
-        user = authenticate_user(db, login_email, payload.password)
-        if not user:
-            user = _ensure_builtin_password_user(db, login_email, payload.password)
-            if user:
-                user = authenticate_user(db, login_email, payload.password)
-
+        user = authenticate_user(db, login_email, login_password)
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
