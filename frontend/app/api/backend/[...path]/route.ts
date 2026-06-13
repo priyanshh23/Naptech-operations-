@@ -25,6 +25,16 @@ function getBackendUrl(backend: string, suffix: string, query: string) {
   return url;
 }
 
+function isSelfProxyUrl(backend: string, requestUrl: string) {
+  try {
+    const backendUrl = new URL(backend);
+    const currentUrl = new URL(requestUrl);
+    return backendUrl.origin === currentUrl.origin;
+  } catch {
+    return false;
+  }
+}
+
 async function proxy(request: NextRequest, params: { path?: string[] }) {
   try {
     const suffix = params.path?.join("/") || "";
@@ -54,6 +64,16 @@ async function proxy(request: NextRequest, params: { path?: string[] }) {
     }
 
     for (const backend of backendCandidates) {
+      if (isSelfProxyUrl(backend, request.url)) {
+        return NextResponse.json(
+          {
+            detail:
+              "Backend API URL points to this frontend deployment. Set BACKEND_API_BASE_URL to the deployed FastAPI backend URL.",
+          },
+          { status: 503 },
+        );
+      }
+
       try {
         const response = await fetch(getBackendUrl(backend, suffix, query), {
           method: request.method,
