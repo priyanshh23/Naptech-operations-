@@ -7,7 +7,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AccessDenied } from "@/components/dashboard/access-denied";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
-import { Badge, Button, Card, MobileRecordCard, PageHeader } from "@/components/ui";
+import { DatePickerField } from "@/components/ui/date-picker-field";
+import { Badge, Button, Card, PageHeader } from "@/components/ui";
 import { createInventoryEntry, deleteInventoryEntry, getInventoryEntries, getInventorySummary, updateInventoryEntry } from "@/lib/api";
 import { downloadExcel, printPdf } from "@/lib/export-utils";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -44,14 +45,17 @@ export default function InventoryEntryPage() {
   const canDelete = canDeleteEntries(currentUser);
   const canAccess = canUseDepartment(currentUser, "inventory");
   const [successMessage, setSuccessMessage] = useState("");
+  const [isFormSaved, setIsFormSaved] = useState(false);
 
   useEffect(() => {
-    void loadPageData();
-  }, [dateFrom, dateTo, debouncedSearch]);
+    const timeoutId = window.setTimeout(() => {
+      void loadPageData();
+    }, 250);
 
-  const filteredEntries = useMemo(() => {
-    return recentEntries;
-  }, [recentEntries]);
+    return () => window.clearTimeout(timeoutId);
+  }, [search, dateFrom, dateTo]);
+
+  const filteredEntries = recentEntries;
 
   const previousBalance = useMemo(() => {
     if (!summary || !form.part_name.trim()) {
@@ -73,11 +77,14 @@ export default function InventoryEntryPage() {
   }, [search, dateFrom, dateTo]);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      setDebouncedSearch(search.trim());
-    }, 250);
-    return () => window.clearTimeout(timeout);
-  }, [search]);
+    if (!successMessage.startsWith("Inventory entry")) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setSuccessMessage("");
+    }, 3000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [successMessage]);
 
   if (!isUserReady) {
     return (
@@ -103,7 +110,7 @@ export default function InventoryEntryPage() {
       const [inventorySummary, inventoryEntries] = await Promise.all([
         getInventorySummary(),
         getInventoryEntries({
-          search: debouncedSearch || undefined,
+          search: search.trim() || undefined,
           date_from: dateFrom || undefined,
           date_to: dateTo || undefined,
         }),
@@ -116,6 +123,11 @@ export default function InventoryEntryPage() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function updateForm(update: Partial<InventoryEntryPayload>) {
+    setIsFormSaved(false);
+    setForm((current) => ({ ...current, ...update }));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -134,6 +146,7 @@ export default function InventoryEntryPage() {
         setRecentEntries((current) => [savedEntry, ...current.filter((entry) => entry.id !== savedEntry.id)].slice(0, 50));
         setEditingId(null);
         setForm({ ...initialForm, date: form.date });
+        setIsFormSaved(true);
         setSuccessMessage("Inventory entry updated and balance recalculated.");
         await loadPageData();
         return;
@@ -146,6 +159,7 @@ export default function InventoryEntryPage() {
       });
       setRecentEntries((current) => [savedEntry, ...current.filter((entry) => entry.id !== savedEntry.id)].slice(0, 50));
       setForm({ ...initialForm, date: form.date });
+      setIsFormSaved(true);
       setSuccessMessage("Inventory entry saved and running balance updated.");
       try {
         const inventorySummary = await getInventorySummary();
@@ -188,6 +202,7 @@ export default function InventoryEntryPage() {
 
   function startEdit(entry: InventoryEntry) {
     setEditingId(entry.id);
+    setIsFormSaved(false);
     setForm({
       date: entry.date.slice(0, 10),
       part_name: entry.part_name,
@@ -239,7 +254,7 @@ export default function InventoryEntryPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#19C93B]">Daily Entry</p>
               <h2 className="mt-2 text-2xl font-semibold text-slate-950">Inventory movement form</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Fill date, part, schedule, inward, outward, and rejection. The system keeps the running balance for you.
+                Fill date, part, schedule, inward, outward, and rejection in kg. The system keeps the running balance for you.
               </p>
             </div>
             <div className="rounded-2xl bg-[#19C93B]/10 p-3 text-[#19C93B]">
@@ -251,42 +266,42 @@ export default function InventoryEntryPage() {
             <Field
               label="Date"
               name="date"
-              onChange={(value) => setForm((current) => ({ ...current, date: value }))}
+              onChange={(value) => updateForm({ date: value })}
               type="date"
               value={form.date}
             />
             <Field
               label="Part Name"
               name="part_name"
-              onChange={(value) => setForm((current) => ({ ...current, part_name: value }))}
+              onChange={(value) => updateForm({ part_name: value })}
               placeholder="e.g. RING CAP"
               value={form.part_name}
             />
             <Field
-              label="Schedule Quantity"
+              label="Schedule Quantity (kg)"
               name="schedule_quantity"
-              onChange={(value) => setForm((current) => ({ ...current, schedule_quantity: Number(value || 0) }))}
+              onChange={(value) => updateForm({ schedule_quantity: Number(value || 0) })}
               type="number"
               value={String(form.schedule_quantity)}
             />
             <Field
-              label="IN Quantity"
+              label="IN Quantity (kg)"
               name="in_quantity"
-              onChange={(value) => setForm((current) => ({ ...current, in_quantity: Number(value || 0) }))}
+              onChange={(value) => updateForm({ in_quantity: Number(value || 0) })}
               type="number"
               value={String(form.in_quantity)}
             />
             <Field
-              label="OUT Quantity"
+              label="OUT Quantity (kg)"
               name="out_quantity"
-              onChange={(value) => setForm((current) => ({ ...current, out_quantity: Number(value || 0) }))}
+              onChange={(value) => updateForm({ out_quantity: Number(value || 0) })}
               type="number"
               value={String(form.out_quantity)}
             />
             <Field
-              label="Rejection Quantity"
+              label="Rejection Quantity (kg)"
               name="rejection_quantity"
-              onChange={(value) => setForm((current) => ({ ...current, rejection_quantity: Number(value || 0) }))}
+              onChange={(value) => updateForm({ rejection_quantity: Number(value || 0) })}
               type="number"
               value={String(form.rejection_quantity)}
             />
@@ -295,13 +310,13 @@ export default function InventoryEntryPage() {
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#087B25]">Balance Preview</p>
-                  <p className="mt-2 text-3xl font-semibold text-slate-950">{projectedBalance.toLocaleString("en-IN")}</p>
-                  <p className="mt-1 text-sm text-slate-500">Previous balance: {previousBalance.toLocaleString("en-IN")}</p>
+                  <p className="mt-2 text-3xl font-semibold text-slate-950">{projectedBalance.toLocaleString("en-IN")} kg</p>
+                  <p className="mt-1 text-sm text-slate-500">Previous balance: {previousBalance.toLocaleString("en-IN")} kg</p>
                 </div>
                 <div className="grid gap-2 text-sm text-slate-600">
-                  <span>IN: +{form.in_quantity.toLocaleString("en-IN")}</span>
-                  <span>OUT: -{form.out_quantity.toLocaleString("en-IN")}</span>
-                  <span>Rejection: -{form.rejection_quantity.toLocaleString("en-IN")}</span>
+                  <span>IN: +{form.in_quantity.toLocaleString("en-IN")} kg</span>
+                  <span>OUT: -{form.out_quantity.toLocaleString("en-IN")} kg</span>
+                  <span>Rejection: -{form.rejection_quantity.toLocaleString("en-IN")} kg</span>
                 </div>
               </div>
             </div>
@@ -311,7 +326,7 @@ export default function InventoryEntryPage() {
               <textarea
                 className="form-control min-h-28 rounded-2xl border border-border px-4 py-3 outline-none ring-0 transition focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
                 name="remarks"
-                onChange={(event) => setForm((current) => ({ ...current, remarks: event.target.value }))}
+                onChange={(event) => updateForm({ remarks: event.target.value })}
                 placeholder="Optional notes for dispatch, shortage, hold, or rejection reason"
                 value={form.remarks ?? ""}
               />
@@ -321,15 +336,20 @@ export default function InventoryEntryPage() {
             {successMessage ? <p className="md:col-span-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{successMessage}</p> : null}
 
             <div className="flex flex-wrap items-center gap-3 md:col-span-2">
-              <Button className="h-11 rounded-xl px-5" disabled={isSaving || !form.part_name.trim()} type="submit">
+              <Button
+                className={`h-11 rounded-xl px-5 ${isFormSaved ? "bg-emerald-500 hover:bg-emerald-500" : "bg-red-500 hover:bg-red-600"}`}
+                disabled={isSaving || isFormSaved || !form.part_name.trim()}
+                type="submit"
+              >
                 {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-                {isSaving ? "Saving..." : "Save Entry"}
+                {isSaving ? "Saving..." : isFormSaved ? "Saved" : "Save Entry"}
               </Button>
               <button
-                className="h-11 rounded-xl border border-border px-5 text-sm font-semibold text-slate-700"
+                className="min-h-11 min-w-0 rounded-xl border border-border px-5 py-2 text-center text-sm font-semibold leading-tight text-slate-700"
                 onClick={() => {
                   setEditingId(null);
                   setForm({ ...initialForm, date: form.date });
+                  setIsFormSaved(false);
                   setError("");
                   setSuccessMessage("");
                 }}
@@ -367,7 +387,7 @@ export default function InventoryEntryPage() {
                     <div className="flex items-center justify-between gap-3 text-sm" key={item.part_name}>
                       <span className="truncate text-slate-600">{item.part_name}</span>
                       <Badge tone={item.is_low_inventory ? "warning" : "success"}>
-                        {item.balance_quantity.toLocaleString("en-IN")}
+                        {item.balance_quantity.toLocaleString("en-IN")} kg
                       </Badge>
                     </div>
                   ))}
@@ -389,42 +409,27 @@ export default function InventoryEntryPage() {
             <input
               className="w-full outline-none"
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search part, remarks, created by"
+              placeholder="Search date, part, qty, user, remark"
               value={search}
             />
           </label>
         </div>
 
-        <div className="mb-4 grid gap-3 md:grid-cols-[repeat(2,220px)_auto_auto] md:items-end">
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-[repeat(2,minmax(180px,220px))_minmax(120px,140px)_minmax(130px,150px)] xl:items-end">
           <label className="block">
             <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
               From Date
             </span>
-            <input
-              className="form-control h-11 rounded-xl border border-border bg-white px-3 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
-              onChange={(event) => {
-                setDateFrom(event.target.value);
-              }}
-              type="date"
-              value={dateFrom}
-            />
+            <DatePickerField inputClassName="h-11 w-full rounded-xl border border-border bg-white px-3 pr-10 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10" onChange={setDateFrom} value={dateFrom} />
           </label>
           <label className="block">
             <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
               To Date
             </span>
-            <input
-              className="form-control h-11 rounded-xl border border-border bg-white px-3 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
-              min={dateFrom || undefined}
-              onChange={(event) => {
-                setDateTo(event.target.value);
-              }}
-              type="date"
-              value={dateTo}
-            />
+            <DatePickerField inputClassName="h-11 w-full rounded-xl border border-border bg-white px-3 pr-10 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10" min={dateFrom || undefined} onChange={setDateTo} value={dateTo} />
           </label>
           <button
-            className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-11 min-w-0 rounded-xl border border-border px-4 py-2 text-center text-sm font-semibold leading-tight text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={isLoading}
             onClick={() => void loadPageData()}
             type="button"
@@ -432,7 +437,7 @@ export default function InventoryEntryPage() {
             {isLoading ? "Refreshing..." : "Refresh"}
           </button>
           <button
-            className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-11 min-w-0 rounded-xl border border-border px-4 py-2 text-center text-sm font-semibold leading-tight text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!dateFrom && !dateTo}
             onClick={() => {
               setDateFrom("");
@@ -509,11 +514,11 @@ export default function InventoryEntryPage() {
                 <tr className="border-b border-border last:border-0" key={entry.id}>
                   <td className="py-4 pr-4 text-slate-700">{formatDate(entry.date)}</td>
                   <td className="wrap-cell py-4 pr-4 font-medium text-slate-950">{entry.part_name}</td>
-                  <td className="py-4 pr-4 text-slate-700">{entry.schedule_quantity.toLocaleString("en-IN")}</td>
-                  <td className="py-4 pr-4 text-slate-700">{entry.in_quantity.toLocaleString("en-IN")}</td>
-                  <td className="py-4 pr-4 text-slate-700">{entry.out_quantity.toLocaleString("en-IN")}</td>
-                  <td className="py-4 pr-4 text-slate-700">{entry.rejection_quantity.toLocaleString("en-IN")}</td>
-                  <td className="py-4 pr-4 font-semibold text-slate-950">{entry.balance_quantity.toLocaleString("en-IN")}</td>
+                  <td className="py-4 pr-4 text-slate-700">{entry.schedule_quantity.toLocaleString("en-IN")} kg</td>
+                  <td className="py-4 pr-4 text-slate-700">{entry.in_quantity.toLocaleString("en-IN")} kg</td>
+                  <td className="py-4 pr-4 text-slate-700">{entry.out_quantity.toLocaleString("en-IN")} kg</td>
+                  <td className="py-4 pr-4 text-slate-700">{entry.rejection_quantity.toLocaleString("en-IN")} kg</td>
+                  <td className="py-4 pr-4 font-semibold text-slate-950">{entry.balance_quantity.toLocaleString("en-IN")} kg</td>
                   <td className="py-4 pr-4 text-slate-700">{entry.created_by}</td>
                   <td className="py-4 pr-4 text-slate-700">{formatDateTime(entry.created_at)}</td>
                   <td className="table-actions py-4 pr-4">
@@ -582,6 +587,7 @@ export default function InventoryEntryPage() {
                 onClick={() => {
                   setEditingId(null);
                   setForm({ ...initialForm, date: form.date });
+                  setIsFormSaved(false);
                   setError("");
                   setSuccessMessage("");
                 }}
@@ -591,33 +597,38 @@ export default function InventoryEntryPage() {
               </button>
             </div>
             <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-              <Field label="Date" name="date" onChange={(value) => setForm((current) => ({ ...current, date: value }))} type="date" value={form.date} />
-              <Field label="Part Name" name="part_name" onChange={(value) => setForm((current) => ({ ...current, part_name: value }))} placeholder="e.g. RING CAP" value={form.part_name} />
-              <Field label="Schedule Quantity" name="schedule_quantity" onChange={(value) => setForm((current) => ({ ...current, schedule_quantity: Number(value || 0) }))} type="number" value={String(form.schedule_quantity)} />
-              <Field label="IN Quantity" name="in_quantity" onChange={(value) => setForm((current) => ({ ...current, in_quantity: Number(value || 0) }))} type="number" value={String(form.in_quantity)} />
-              <Field label="OUT Quantity" name="out_quantity" onChange={(value) => setForm((current) => ({ ...current, out_quantity: Number(value || 0) }))} type="number" value={String(form.out_quantity)} />
-              <Field label="Rejection Quantity" name="rejection_quantity" onChange={(value) => setForm((current) => ({ ...current, rejection_quantity: Number(value || 0) }))} type="number" value={String(form.rejection_quantity)} />
+              <Field label="Date" name="date" onChange={(value) => updateForm({ date: value })} type="date" value={form.date} />
+              <Field label="Part Name" name="part_name" onChange={(value) => updateForm({ part_name: value })} placeholder="e.g. RING CAP" value={form.part_name} />
+              <Field label="Schedule Quantity (kg)" name="schedule_quantity" onChange={(value) => updateForm({ schedule_quantity: Number(value || 0) })} type="number" value={String(form.schedule_quantity)} />
+              <Field label="IN Quantity (kg)" name="in_quantity" onChange={(value) => updateForm({ in_quantity: Number(value || 0) })} type="number" value={String(form.in_quantity)} />
+              <Field label="OUT Quantity (kg)" name="out_quantity" onChange={(value) => updateForm({ out_quantity: Number(value || 0) })} type="number" value={String(form.out_quantity)} />
+              <Field label="Rejection Quantity (kg)" name="rejection_quantity" onChange={(value) => updateForm({ rejection_quantity: Number(value || 0) })} type="number" value={String(form.rejection_quantity)} />
               <label className="block md:col-span-2">
                 <span className="mb-2 block text-sm font-medium text-slate-800">Remarks</span>
                 <textarea
                   className="form-control min-h-28 rounded-2xl border border-border px-4 py-3 outline-none ring-0 transition focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
                   name="remarks"
-                  onChange={(event) => setForm((current) => ({ ...current, remarks: event.target.value }))}
+                  onChange={(event) => updateForm({ remarks: event.target.value })}
                   placeholder="Optional notes for dispatch, shortage, hold, or rejection reason"
                   value={form.remarks ?? ""}
                 />
               </label>
               {error ? <p className="md:col-span-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</p> : null}
               <div className="flex flex-wrap items-center gap-3 md:col-span-2">
-                <Button className="h-11 rounded-xl px-5" disabled={isSaving || !form.part_name.trim()} type="submit">
+                <Button
+                  className={`h-11 rounded-xl px-5 ${isFormSaved ? "bg-emerald-500 hover:bg-emerald-500" : "bg-red-500 hover:bg-red-600"}`}
+                  disabled={isSaving || isFormSaved || !form.part_name.trim()}
+                  type="submit"
+                >
                   {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-                  {isSaving ? "Saving..." : "Save Changes"}
+                  {isSaving ? "Saving..." : isFormSaved ? "Saved" : "Save Changes"}
                 </Button>
                 <button
-                  className="h-11 rounded-xl border border-border px-5 text-sm font-semibold text-slate-700"
+                  className="min-h-11 min-w-0 rounded-xl border border-border px-5 py-2 text-center text-sm font-semibold leading-tight text-slate-700"
                   onClick={() => {
                     setEditingId(null);
                     setForm({ ...initialForm, date: form.date });
+                    setIsFormSaved(false);
                     setError("");
                     setSuccessMessage("");
                   }}
@@ -670,11 +681,11 @@ function buildInventoryUpdatePayload(form: InventoryEntryPayload, originalEntry?
 const inventoryEntryExportColumns = [
   { label: "Date", value: (row: InventoryEntry) => formatDate(row.date) },
   { label: "Part Name", value: (row: InventoryEntry) => row.part_name },
-  { label: "Schedule Quantity", value: (row: InventoryEntry) => row.schedule_quantity },
-  { label: "IN Quantity", value: (row: InventoryEntry) => row.in_quantity },
-  { label: "OUT Quantity", value: (row: InventoryEntry) => row.out_quantity },
-  { label: "Rejection Quantity", value: (row: InventoryEntry) => row.rejection_quantity },
-  { label: "Balance Quantity", value: (row: InventoryEntry) => row.balance_quantity },
+  { label: "Schedule Quantity (kg)", value: (row: InventoryEntry) => row.schedule_quantity },
+  { label: "IN Quantity (kg)", value: (row: InventoryEntry) => row.in_quantity },
+  { label: "OUT Quantity (kg)", value: (row: InventoryEntry) => row.out_quantity },
+  { label: "Rejection Quantity (kg)", value: (row: InventoryEntry) => row.rejection_quantity },
+  { label: "Balance Quantity (kg)", value: (row: InventoryEntry) => row.balance_quantity },
   { label: "Remarks", value: (row: InventoryEntry) => row.remarks || "-" },
   { label: "Created By", value: (row: InventoryEntry) => row.created_by },
   { label: "Saved At", value: (row: InventoryEntry) => formatDateTime(row.created_at) },
@@ -695,6 +706,18 @@ function Field({
   type?: string;
   value: string;
 }>) {
+  if (type === "date") {
+    return (
+      <DatePickerField
+        inputClassName="h-12 w-full rounded-2xl border border-border px-4 pr-12 outline-none ring-0 transition focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+        label={label}
+        onChange={onChange}
+        required={name !== "remarks"}
+        value={value}
+      />
+    );
+  }
+
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-slate-800">{label}</span>

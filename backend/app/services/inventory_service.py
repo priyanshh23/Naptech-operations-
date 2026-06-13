@@ -98,62 +98,32 @@ def _build_part_balance_rows(
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
 ) -> list[InventoryPartBalance]:
-    latest_statement = select(
-        InventoryEntry.part_name.label("part_name"),
-        InventoryEntry.balance_quantity.label("balance_quantity"),
-        InventoryEntry.date.label("latest_entry_date"),
-        func.row_number()
-        .over(
-            partition_by=InventoryEntry.part_name,
-            order_by=(InventoryEntry.date.desc(), InventoryEntry.created_at.desc(), InventoryEntry.id.desc()),
-        )
-        .label("row_number"),
-    )
+    statement = select(
+        InventoryEntry.part_name,
+        func.coalesce(func.sum(InventoryEntry.in_quantity), 0),
+        func.coalesce(func.sum(InventoryEntry.out_quantity), 0),
+        func.coalesce(func.sum(InventoryEntry.rejection_quantity), 0),
+        func.max(InventoryEntry.date),
+    ).group_by(InventoryEntry.part_name)
     if date_from:
-        latest_statement = latest_statement.where(InventoryEntry.date >= date_from)
+        statement = statement.where(InventoryEntry.date >= date_from)
     if date_to:
-        latest_statement = latest_statement.where(InventoryEntry.date <= date_to)
+        statement = statement.where(InventoryEntry.date <= date_to)
 
-    latest_subquery = latest_statement.subquery()
-    latest_rows = {
-        row.part_name: row
-        for row in db.execute(
-            select(
-                latest_subquery.c.part_name,
-                latest_subquery.c.balance_quantity,
-                latest_subquery.c.latest_entry_date,
-            ).where(latest_subquery.c.row_number == 1)
-        ).all()
-    }
-
-    totals_statement = (
-        select(
-            InventoryEntry.part_name,
-            func.coalesce(func.sum(InventoryEntry.in_quantity), 0),
-            func.coalesce(func.sum(InventoryEntry.out_quantity), 0),
-            func.coalesce(func.sum(InventoryEntry.rejection_quantity), 0),
-        )
-        .group_by(InventoryEntry.part_name)
-    )
-    if date_from:
-        totals_statement = totals_statement.where(InventoryEntry.date >= date_from)
-    if date_to:
-        totals_statement = totals_statement.where(InventoryEntry.date <= date_to)
-
-    rows: list[InventoryPartBalance] = []
-    for part_name, total_in_quantity, total_out_quantity, total_rejection_quantity in db.execute(totals_statement).all():
-        latest = latest_rows.get(part_name)
-        if not latest:
-            continue
-        balance_quantity = int(latest.balance_quantity)
+    rows = []
+    for part_name, total_in, total_out, total_rejection, latest_entry_date in db.execute(statement).all():
+        total_in_quantity = int(total_in)
+        total_out_quantity = int(total_out)
+        total_rejection_quantity = int(total_rejection)
+        balance_quantity = total_in_quantity - total_out_quantity - total_rejection_quantity
         rows.append(
             InventoryPartBalance(
                 part_name=part_name,
                 balance_quantity=balance_quantity,
-                total_in_quantity=int(total_in_quantity),
-                total_out_quantity=int(total_out_quantity),
-                total_rejection_quantity=int(total_rejection_quantity),
-                latest_entry_date=latest.latest_entry_date,
+                total_in_quantity=total_in_quantity,
+                total_out_quantity=total_out_quantity,
+                total_rejection_quantity=total_rejection_quantity,
+                latest_entry_date=latest_entry_date,
                 is_low_inventory=balance_quantity < settings.inventory_low_threshold,
             )
         )

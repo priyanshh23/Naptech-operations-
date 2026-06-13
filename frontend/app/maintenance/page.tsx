@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight, Download, FileText, Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AccessDenied } from "@/components/dashboard/access-denied";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
@@ -32,6 +32,7 @@ export default function MaintenancePage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [isFormSaved, setIsFormSaved] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -39,9 +40,7 @@ export default function MaintenancePage() {
   const { isReady: isUserReady, user: currentUser } = useStoredUser();
   const canDelete = canDeleteEntries(currentUser);
   const canAccess = canUseDepartment(currentUser, "maintenance");
-  const filteredJobs = useMemo(() => {
-    return maintenanceJobs;
-  }, [maintenanceJobs]);
+  const filteredJobs = maintenanceJobs;
   const totalPages = Math.max(1, Math.ceil(filteredJobs.length / PAGE_SIZE));
   const paginatedJobs = filteredJobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -53,19 +52,26 @@ export default function MaintenancePage() {
   }, []);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      setDebouncedSearch(search.trim());
+    const timeoutId = window.setTimeout(() => {
+      void loadMaintenanceJobs();
     }, 250);
-    return () => window.clearTimeout(timeout);
-  }, [search]);
 
-  useEffect(() => {
-    void loadMaintenanceJobs(debouncedSearch);
-  }, [debouncedSearch]);
+    return () => window.clearTimeout(timeoutId);
+  }, [search]);
 
   useEffect(() => {
     setPage(1);
   }, [search]);
+
+  useEffect(() => {
+    if (!message || message.startsWith("Editing ")) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setMessage("");
+    }, 3000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [message]);
 
   if (!isUserReady) {
     return (
@@ -86,11 +92,16 @@ export default function MaintenancePage() {
   async function loadMaintenanceJobs(searchTerm = debouncedSearch) {
     setError("");
     try {
-      const response = await getMaintenanceJobs({ search: searchTerm || undefined });
+      const response = await getMaintenanceJobs({ search: search.trim() || undefined });
       setMaintenanceJobs(withoutDeletedIds(response.items, deletedJobIdsRef.current));
     } catch (error) {
       setError(error instanceof Error ? error.message : "Unable to load maintenance jobs.");
     }
+  }
+
+  function updateForm(update: Partial<typeof initialForm>) {
+    setIsFormSaved(false);
+    setForm((current) => ({ ...current, ...update }));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -104,6 +115,7 @@ export default function MaintenancePage() {
         await loadMaintenanceJobs();
         setEditingId(null);
         setForm(initialForm);
+        setIsFormSaved(true);
         setMessage("Maintenance job updated.");
       } catch (error) {
         setError(error instanceof Error ? error.message : "Maintenance job could not be updated.");
@@ -116,6 +128,7 @@ export default function MaintenancePage() {
       await loadMaintenanceJobs();
       setPage(1);
       setForm(initialForm);
+      setIsFormSaved(true);
       setMessage("Maintenance job saved to the table.");
     } catch (error) {
       setError(error instanceof Error ? error.message : "Maintenance job could not be saved.");
@@ -137,6 +150,7 @@ export default function MaintenancePage() {
 
   function startEdit(job: MaintenanceJob) {
     setEditingId(job.id);
+    setIsFormSaved(false);
     setForm({
       machine: job.machine,
       team: job.team,
@@ -215,16 +229,16 @@ export default function MaintenancePage() {
         </div>
 
         <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-6" onSubmit={handleSubmit}>
-          <Field label="Machine" onChange={(value) => setForm((current) => ({ ...current, machine: value }))} placeholder="CNC-12" value={form.machine} />
-          <Field label="Team" onChange={(value) => setForm((current) => ({ ...current, team: value }))} placeholder="Mechanical" value={form.team} />
-          <Field label="Breakdown From" onChange={(value) => setForm((current) => ({ ...current, breakdownFrom: value }))} placeholder="" type="datetime-local" value={form.breakdownFrom} />
-          <Field label="Breakdown To" onChange={(value) => setForm((current) => ({ ...current, breakdownTo: value }))} placeholder="" type="datetime-local" value={form.breakdownTo} />
-          <Field label="Reason" onChange={(value) => setForm((current) => ({ ...current, reason: value }))} placeholder="Spindle vibration" value={form.reason} />
+          <Field label="Machine" onChange={(value) => updateForm({ machine: value })} placeholder="CNC-12" value={form.machine} />
+          <Field label="Team" onChange={(value) => updateForm({ team: value })} placeholder="Mechanical" value={form.team} />
+          <Field label="Breakdown From" onChange={(value) => updateForm({ breakdownFrom: value })} placeholder="" type="datetime-local" value={form.breakdownFrom} />
+          <Field label="Breakdown To" onChange={(value) => updateForm({ breakdownTo: value })} placeholder="" type="datetime-local" value={form.breakdownTo} />
+          <Field label="Reason" onChange={(value) => updateForm({ reason: value })} placeholder="Spindle vibration" value={form.reason} />
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-slate-800">Priority</span>
             <select
-              className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
-              onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value as MaintenanceJob["priority"] }))}
+              className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+              onChange={(event) => updateForm({ priority: event.target.value as MaintenanceJob["priority"] })}
               value={form.priority}
             >
               <option value="High">High</option>
@@ -235,8 +249,8 @@ export default function MaintenancePage() {
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-slate-800">Status</span>
             <select
-              className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
-              onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as MaintenanceJob["status"] }))}
+              className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+              onChange={(event) => updateForm({ status: event.target.value as MaintenanceJob["status"] })}
               value={form.status}
             >
               <option value="Pending">Pending</option>
@@ -244,10 +258,10 @@ export default function MaintenancePage() {
               <option value="Completed">Completed</option>
             </select>
           </label>
-          <Field label="Due By" onChange={(value) => setForm((current) => ({ ...current, dueBy: value }))} placeholder="" type="datetime-local" value={form.dueBy} />
-          <Button className="h-11 self-end rounded-xl" disabled={!form.machine || !form.team || !form.breakdownFrom || !form.breakdownTo || !form.reason || !form.dueBy} type="submit">
+          <Field label="Due By" onChange={(value) => updateForm({ dueBy: value })} placeholder="" type="datetime-local" value={form.dueBy} />
+          <Button className={`h-11 self-end rounded-xl ${isFormSaved ? "bg-emerald-500 hover:bg-emerald-500" : "bg-red-500 hover:bg-red-600"}`} disabled={isFormSaved || !form.machine || !form.team || !form.breakdownFrom || !form.breakdownTo || !form.reason || !form.dueBy} type="submit">
             <Save size={16} />
-            Save Job
+            {isFormSaved ? "Saved" : "Save Job"}
           </Button>
         </form>
 
@@ -266,7 +280,7 @@ export default function MaintenancePage() {
             <input
               className="form-control h-11 rounded-xl border border-border bg-white pl-10 pr-10 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search machine, team, reason, status"
+              placeholder="Search job, date, machine, team, reason, status"
               value={search}
             />
             {search ? (
@@ -405,6 +419,7 @@ export default function MaintenancePage() {
                 onClick={() => {
                   setEditingId(null);
                   setForm(initialForm);
+                  setIsFormSaved(false);
                   setMessage("");
                 }}
                 type="button"
@@ -413,16 +428,16 @@ export default function MaintenancePage() {
               </button>
             </div>
             <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" onSubmit={handleSubmit}>
-              <Field label="Machine" onChange={(value) => setForm((current) => ({ ...current, machine: value }))} placeholder="CNC-12" value={form.machine} />
-              <Field label="Team" onChange={(value) => setForm((current) => ({ ...current, team: value }))} placeholder="Mechanical" value={form.team} />
-              <Field label="Breakdown From" onChange={(value) => setForm((current) => ({ ...current, breakdownFrom: value }))} placeholder="" type="datetime-local" value={form.breakdownFrom} />
-              <Field label="Breakdown To" onChange={(value) => setForm((current) => ({ ...current, breakdownTo: value }))} placeholder="" type="datetime-local" value={form.breakdownTo} />
-              <Field label="Reason" onChange={(value) => setForm((current) => ({ ...current, reason: value }))} placeholder="Spindle vibration" value={form.reason} />
+              <Field label="Machine" onChange={(value) => updateForm({ machine: value })} placeholder="CNC-12" value={form.machine} />
+              <Field label="Team" onChange={(value) => updateForm({ team: value })} placeholder="Mechanical" value={form.team} />
+              <Field label="Breakdown From" onChange={(value) => updateForm({ breakdownFrom: value })} placeholder="" type="datetime-local" value={form.breakdownFrom} />
+              <Field label="Breakdown To" onChange={(value) => updateForm({ breakdownTo: value })} placeholder="" type="datetime-local" value={form.breakdownTo} />
+              <Field label="Reason" onChange={(value) => updateForm({ reason: value })} placeholder="Spindle vibration" value={form.reason} />
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-800">Priority</span>
                 <select
-                  className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
-                  onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value as MaintenanceJob["priority"] }))}
+                  className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  onChange={(event) => updateForm({ priority: event.target.value as MaintenanceJob["priority"] })}
                   value={form.priority}
                 >
                   <option value="High">High</option>
@@ -433,8 +448,8 @@ export default function MaintenancePage() {
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-800">Status</span>
                 <select
-                  className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
-                  onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as MaintenanceJob["status"] }))}
+                  className="h-11 w-full rounded-xl border border-border bg-white px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+                  onChange={(event) => updateForm({ status: event.target.value as MaintenanceJob["status"] })}
                   value={form.status}
                 >
                   <option value="Pending">Pending</option>
@@ -442,17 +457,18 @@ export default function MaintenancePage() {
                   <option value="Completed">Completed</option>
                 </select>
               </label>
-              <Field label="Due By" onChange={(value) => setForm((current) => ({ ...current, dueBy: value }))} placeholder="" type="datetime-local" value={form.dueBy} />
+              <Field label="Due By" onChange={(value) => updateForm({ dueBy: value })} placeholder="" type="datetime-local" value={form.dueBy} />
               <div className="flex items-end gap-3 md:col-span-2 xl:col-span-3">
-                <Button className="h-11 rounded-xl" disabled={!form.machine || !form.team || !form.breakdownFrom || !form.breakdownTo || !form.reason || !form.dueBy} type="submit">
+                <Button className={`h-11 rounded-xl ${isFormSaved ? "bg-emerald-500 hover:bg-emerald-500" : "bg-red-500 hover:bg-red-600"}`} disabled={isFormSaved || !form.machine || !form.team || !form.breakdownFrom || !form.breakdownTo || !form.reason || !form.dueBy} type="submit">
                   <Save size={16} />
-                  Save Changes
+                  {isFormSaved ? "Saved" : "Save Changes"}
                 </Button>
                 <button
                   className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700"
                   onClick={() => {
                     setEditingId(null);
                     setForm(initialForm);
+                    setIsFormSaved(false);
                     setMessage("");
                   }}
                   type="button"
@@ -526,6 +542,21 @@ function Pagination({
   );
 }
 
+function DateTimeField({ label, onChange, value }: Readonly<{ label: string; onChange: (value: string) => void; value: string }>) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-slate-800">{label}</span>
+      <input
+        className="h-11 w-full rounded-xl border border-border px-3 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+        onChange={(event) => onChange(event.target.value)}
+        required
+        type="datetime-local"
+        value={value}
+      />
+    </label>
+  );
+}
+
 function Field({
   label,
   onChange,
@@ -539,6 +570,10 @@ function Field({
   type?: string;
   value: string;
 }>) {
+  if (type === "datetime-local") {
+    return <DateTimeField label={label} onChange={onChange} value={value} />;
+  }
+
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-slate-800">{label}</span>

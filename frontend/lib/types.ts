@@ -200,6 +200,7 @@ export type QualityRejection = {
   reason: string;
   cause: string;
   crMr: "CR" | "MR";
+  jobWork: "Yes" | "No";
   remarks: string;
   timestamp: string;
 };
@@ -208,6 +209,101 @@ export type QualityRejectionPayload = Omit<QualityRejection, "id" | "timestamp">
 
 export type QualityRejectionListResponse = {
   items: QualityRejection[];
+  total: number;
+};
+
+export type GaugeInventory = {
+  id: number;
+  gaugeName: string;
+  gaugeSpecification: string;
+  gaugeType: string;
+  gaugeQty: number;
+  gaugeNo: string;
+  wearAndTear: "Yes" | "No";
+  gaugeCompany: string;
+  createdBy: string;
+  updatedAt: string;
+};
+
+export type GaugeInventoryPayload = Omit<GaugeInventory, "id" | "createdBy" | "updatedAt">;
+
+export type GaugeInventoryListResponse = {
+  items: GaugeInventory[];
+  total: number;
+};
+
+export type GaugeStock = {
+  id: number;
+  gaugeStockQty: number;
+  gaugeType: string;
+  gaugePartName: string;
+  createdBy: string;
+  updatedAt: string;
+};
+
+export type GaugeStockPayload = Omit<GaugeStock, "id" | "createdBy" | "updatedAt">;
+
+export type GaugeStockListResponse = {
+  items: GaugeStock[];
+  total: number;
+};
+
+export type CalibrationSheet = {
+  id: number;
+  serialNumber: string;
+  equipmentName: string;
+  make: string;
+  equipmentNo: string;
+  quantity: number;
+  rangeSize: string;
+  leastCount: string;
+  frequencyCalibration: string;
+  calibratedOn: string;
+  calibrationDueOn: string;
+  location: string;
+  remark: string;
+  createdBy: string;
+  updatedAt: string;
+};
+
+export type CalibrationSheetPayload = Omit<CalibrationSheet, "id" | "createdBy" | "updatedAt">;
+
+export type CalibrationSheetListResponse = {
+  items: CalibrationSheet[];
+  total: number;
+};
+
+export type GaugeHistoryCard = {
+  id: number;
+  description: string;
+  controlNo: string;
+  validationStandard: string;
+  location: string;
+  frequencyOfValidation: string;
+  serialNumber: string;
+  inspectionItem: string;
+  specification: string;
+  inspectionInstruments: string;
+  remarks: string;
+  validationDate: string;
+  observationA: string;
+  observationB: string;
+  observationC: string;
+  observationD: string;
+  observationE: string;
+  judgment: string;
+  dueDate: string;
+  rectificationDone: string;
+  inspectionBy: string;
+  hod: string;
+  createdBy: string;
+  updatedAt: string;
+};
+
+export type GaugeHistoryCardPayload = Omit<GaugeHistoryCard, "id" | "createdBy" | "updatedAt">;
+
+export type GaugeHistoryCardListResponse = {
+  items: GaugeHistoryCard[];
   total: number;
 };
 

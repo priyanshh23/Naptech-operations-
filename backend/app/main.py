@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect, text
 
 from app.database.base import Base
 from app.database.session import SessionLocal, engine
-from app.models import Inventory, InventoryEntry, InventoryLog, MaintenanceJob, Notification, ProductionEntry, ProductionTask, QualityRejection, User
+from app.models import CalibrationSheet, GaugeHistoryCard, GaugeInventory, GaugeStock, Inventory, InventoryEntry, InventoryLog, MaintenanceJob, Notification, ProductionEntry, ProductionTask, QualityRejection, User
 from app.models.user import UserRole
 from app.routes import auth, dashboard, inventory, maintenance, notifications, production, quality, tasks
 from app.schemas.auth import RegisterRequest
@@ -31,9 +32,26 @@ app.include_router(dashboard.router)
 app.include_router(notifications.router)
 
 
+def ensure_schema_updates() -> None:
+    inspector = inspect(engine)
+    if "quality_rejections" not in inspector.get_table_names():
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("quality_rejections")}
+    if "job_work" in columns:
+        return
+
+    with engine.begin() as connection:
+        if engine.dialect.name == "postgresql":
+            connection.execute(text("ALTER TABLE quality_rejections ADD COLUMN IF NOT EXISTS job_work VARCHAR(10) NOT NULL DEFAULT 'No'"))
+        else:
+            connection.execute(text("ALTER TABLE quality_rejections ADD COLUMN job_work VARCHAR(10) NOT NULL DEFAULT 'No'"))
+
+
 @app.on_event("startup")
 def startup() -> None:
     Base.metadata.create_all(bind=engine)
+    ensure_schema_updates()
 
     if settings.environment != "development":
         return
@@ -63,6 +81,7 @@ def startup() -> None:
                 existing_user.role = role.value
                 existing_user.password = hash_password("password")
                 db.commit()
+
 
 @app.get("/health", tags=["health"])
 def health_check() -> dict[str, str]:

@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight, Download, FileText, Loader2, Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -15,7 +15,8 @@ import {
 
 import { AccessDenied } from "@/components/dashboard/access-denied";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
-import { Badge, Button, Card, MobileRecordCard, PageHeader } from "@/components/ui";
+import { DatePickerField } from "@/components/ui/date-picker-field";
+import { Badge, Button, Card, PageHeader } from "@/components/ui";
 import { createProductionEntries, deleteProductionEntry, getMachineAnalytics, getProductionEntries, getProductionSummary, updateProductionEntry } from "@/lib/api";
 import { downloadExcel, printPdf } from "@/lib/export-utils";
 import { formatDate } from "@/lib/format";
@@ -61,6 +62,7 @@ export default function ProductionPage() {
   const [editForm, setEditForm] = useState<ProductionEntryPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [savedDraftRowIds, setSavedDraftRowIds] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const deletedEntryIdsRef = useRef<Set<number>>(new Set());
@@ -73,22 +75,14 @@ export default function ProductionPage() {
     if (initialSearch) {
       setSearch(initialSearch);
     }
-  }, []);
-
-  useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      setDebouncedSearch(search.trim());
+    const timeoutId = window.setTimeout(() => {
+      void loadProductionData();
     }, 250);
-    return () => window.clearTimeout(timeout);
-  }, [search]);
 
-  useEffect(() => {
-    void loadProductionData();
-  }, [dateFrom, dateTo, debouncedSearch]);
+    return () => window.clearTimeout(timeoutId);
+  }, [search, dateFrom, dateTo]);
 
-  const filteredEntries = useMemo(() => {
-    return entries;
-  }, [entries]);
+  const filteredEntries = entries;
 
   const logsTotalPages = Math.max(1, Math.ceil(filteredEntries.length / LOG_PAGE_SIZE));
   const paginatedEntries = filteredEntries.slice((logsPage - 1) * LOG_PAGE_SIZE, logsPage * LOG_PAGE_SIZE);
@@ -102,6 +96,16 @@ export default function ProductionPage() {
   useEffect(() => {
     setMachinePage(1);
   }, [dateFrom, dateTo]);
+
+  useEffect(() => {
+    if (!message) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setMessage("");
+    }, 3000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [message]);
 
   if (!isUserReady) {
     return (
@@ -125,7 +129,7 @@ export default function ProductionPage() {
 
     try {
       const params = {
-        search: debouncedSearch || undefined,
+        search: search.trim() || undefined,
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
       };
@@ -146,6 +150,12 @@ export default function ProductionPage() {
   }
 
   function updateDraft(rowId: string, field: keyof ProductionEntryPayload, value: string) {
+    setSavedDraftRowIds((current) => {
+      if (!current.has(rowId)) return current;
+      const next = new Set(current);
+      next.delete(rowId);
+      return next;
+    });
     setDraftRows((current) =>
       current.map((row) =>
         row.rowId === rowId
@@ -159,39 +169,35 @@ export default function ProductionPage() {
   }
 
   function removeDraft(rowId: string) {
+    setSavedDraftRowIds((current) => {
+      if (!current.has(rowId)) return current;
+      const next = new Set(current);
+      next.delete(rowId);
+      return next;
+    });
     setDraftRows((current) => (current.length === 1 ? current : current.filter((row) => row.rowId !== rowId)));
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleSaveDraftRow(row: DraftRow) {
+    if (savedDraftRowIds.has(row.rowId)) return;
+
     setError("");
     setMessage("");
-    setIsSaving(true);
 
-    const validRows = draftRows
-      .map(({ rowId: _rowId, ...row }) => ({
-        ...row,
-        machine_number: row.machine_number.trim(),
-        operator_name: row.operator_name.trim(),
-        part_number: row.part_number.trim(),
-        part_name: row.part_name.trim(),
-        remarks: row.remarks?.trim() || null,
-      }))
-      .filter((row) => row.machine_number && row.operator_name && row.part_number && row.part_name);
-
-    if (!validRows.length) {
-      setError("Fill at least one complete production row before saving.");
-      setIsSaving(false);
+    const payload = normalizeDraftRow(row);
+    if (!payload) {
+      setError("Fill machine, operator, part number, and part name before saving this row.");
       return;
     }
 
+    setIsSaving(true);
     try {
-      await createProductionEntries(validRows);
-      setDraftRows([emptyDraft(), emptyDraft(), emptyDraft()]);
-      setMessage(`${validRows.length} production row${validRows.length > 1 ? "s" : ""} saved.`);
+      await createProductionEntries([payload]);
+      setSavedDraftRowIds((current) => new Set(current).add(row.rowId));
+      setMessage(`Production row saved for ${payload.machine_number} / ${payload.part_name}.`);
       await loadProductionData();
     } catch (error) {
-      const detail = error instanceof Error ? error.message : "Production rows could not be saved.";
+      const detail = error instanceof Error ? error.message : "Production row could not be saved.";
       setError(detail);
     } finally {
       setIsSaving(false);
@@ -328,52 +334,8 @@ export default function ProductionPage() {
           </Button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="w-full max-w-full space-y-3 overflow-hidden md:hidden">
-            {draftRows.map((row, index) => (
-              <div className="w-full max-w-full overflow-hidden rounded-2xl border border-border bg-white p-4 dark:bg-white/[0.04]" key={row.rowId}>
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-slate-950">Row {index + 1}</p>
-                  <button
-                    className="inline-flex h-9 items-center rounded-lg border border-red-100 px-3 text-xs font-semibold text-red-600 transition hover:bg-red-50"
-                    onClick={() => removeDraft(row.rowId)}
-                    type="button"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-                <div className="grid gap-3">
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-slate-800">Shift</span>
-                    <select
-                      className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none"
-                      onChange={(event) => updateDraft(row.rowId, "shift", event.target.value)}
-                      value={row.shift}
-                    >
-                      <option value="A">A</option>
-                      <option value="B">B</option>
-                      <option value="C">C</option>
-                    </select>
-                  </label>
-                  <DraftField field="date" label="Date" row={row} type="date" updateDraft={updateDraft} />
-                  <DraftField field="machine_number" label="Machine Number" placeholder="CNC-01" row={row} updateDraft={updateDraft} />
-                  <DraftField field="operator_name" label="Operator" placeholder="Rahul" row={row} updateDraft={updateDraft} />
-                  <DraftField field="part_number" label="Part Number" placeholder="TA-204" row={row} updateDraft={updateDraft} />
-                  <DraftField field="part_name" label="Part Name" placeholder="Torque Arm" row={row} updateDraft={updateDraft} />
-                  <DraftField field="cycle_time_seconds" label="Total Time (sec)" row={row} type="number" updateDraft={updateDraft} />
-                  <DraftField field="target_per_hour" label="Target/Hour" row={row} type="number" updateDraft={updateDraft} />
-                  <DraftField field="daily_target" label="Daily Target" row={row} type="number" updateDraft={updateDraft} />
-                  <DraftField field="actual_production" label="Actual Production" row={row} type="number" updateDraft={updateDraft} />
-                  <div className="rounded-xl bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800">
-                    Efficiency: {getEfficiency(row.actual_production, row.daily_target)}%
-                  </div>
-                  <DraftField field="remarks" label="Remarks" placeholder="Delay, tool change..." row={row} updateDraft={updateDraft} />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="table-scroll hidden max-h-[430px] rounded-xl border border-border md:block">
+        <form onSubmit={(event) => event.preventDefault()}>
+          <div className="max-h-[430px] overflow-auto rounded-xl border border-border">
             <table className="data-entry-table data-table w-full min-w-[1960px] border-collapse text-left text-sm">
               <colgroup>
                 <col className="w-[110px]" />
@@ -408,7 +370,10 @@ export default function ProductionPage() {
                 </tr>
               </thead>
               <tbody>
-                {draftRows.map((row) => (
+                {draftRows.map((row) => {
+                  const isSaved = savedDraftRowIds.has(row.rowId);
+
+                  return (
                   <tr className="border-b border-border last:border-0" key={row.rowId}>
                     <td className="py-3 pr-3">
                       <select
@@ -436,6 +401,19 @@ export default function ProductionPage() {
                     <EditableCell field="remarks" placeholder="Delay, tool change..." row={row} updateDraft={updateDraft} />
                     <td className="table-actions py-3 pr-3">
                       <button
+                        className={`mr-2 inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-xs font-semibold text-white transition ${
+                          isSaved
+                            ? "border-emerald-500 bg-emerald-500"
+                            : "border-red-500 bg-red-500 hover:bg-red-600"
+                        } disabled:cursor-not-allowed disabled:opacity-90`}
+                        disabled={isSaving || isSaved}
+                        onClick={() => void handleSaveDraftRow(row)}
+                        type="button"
+                      >
+                        <Save size={14} />
+                        {isSaved ? "Saved" : "Save"}
+                      </button>
+                      <button
                         className="inline-flex h-9 items-center rounded-md border border-red-100 px-3 text-xs font-semibold text-red-600 transition hover:bg-red-50"
                         onClick={() => removeDraft(row.rowId)}
                         type="button"
@@ -444,7 +422,8 @@ export default function ProductionPage() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -453,13 +432,12 @@ export default function ProductionPage() {
           {message ? <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{message}</p> : null}
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
-            <Button disabled={isSaving} type="submit">
-              {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-              {isSaving ? "Saving..." : "Save Production Rows"}
-            </Button>
             <button
-              className="h-10 rounded-md border border-border px-4 text-sm font-semibold text-slate-700"
-              onClick={() => setDraftRows([emptyDraft(), emptyDraft(), emptyDraft()])}
+              className="min-w-0 whitespace-normal rounded-md border border-border px-4 py-2 text-center text-sm font-semibold leading-tight text-slate-700"
+              onClick={() => {
+                setSavedDraftRowIds(new Set());
+                setDraftRows([emptyDraft(), emptyDraft(), emptyDraft()]);
+              }}
               type="button"
             >
               Clear Sheet
@@ -480,17 +458,17 @@ export default function ProductionPage() {
               <input
                 className="w-full outline-none"
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search machine, part, operator"
+                placeholder="Search date, machine, part, qty, operator"
                 value={search}
               />
             </label>
           </div>
 
-          <div className="mb-4 grid gap-3 md:grid-cols-[repeat(2,220px)_auto_auto] md:items-end">
+          <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-[repeat(2,minmax(180px,220px))_minmax(120px,140px)_minmax(130px,150px)] xl:items-end">
             <DateFilter label="From Date" onChange={setDateFrom} value={dateFrom} />
             <DateFilter label="To Date" min={dateFrom || undefined} onChange={setDateTo} value={dateTo} />
             <button
-              className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-11 min-w-0 rounded-xl border border-border px-4 py-2 text-center text-sm font-semibold leading-tight text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={isLoading}
               onClick={() => void loadProductionData()}
               type="button"
@@ -498,7 +476,7 @@ export default function ProductionPage() {
               {isLoading ? "Refreshing..." : "Refresh"}
             </button>
             <button
-              className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-11 min-w-0 rounded-xl border border-border px-4 py-2 text-center text-sm font-semibold leading-tight text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!dateFrom && !dateTo}
               onClick={() => {
                 setDateFrom("");
@@ -887,6 +865,20 @@ function EditableCell({
   type?: string;
   updateDraft: (rowId: string, field: keyof ProductionEntryPayload, value: string) => void;
 }>) {
+  if (type === "date") {
+    return (
+      <td className="min-w-[150px] py-3 pr-3">
+        <DatePickerField
+          calendarSize="compact"
+          inputClassName="h-10 w-[150px] rounded-md border border-border bg-white px-3 pr-10 outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
+          onChange={(value) => updateDraft(row.rowId, field, value)}
+          required={field !== "remarks"}
+          value={String(row[field] ?? "")}
+        />
+      </td>
+    );
+  }
+
   return (
     <td className="py-3 pr-3">
       <input
@@ -944,6 +936,18 @@ function EditField({
   type?: string;
   value: string;
 }>) {
+  if (type === "date") {
+    return (
+      <DatePickerField
+        displayFormat="sheet"
+        label={label}
+        onChange={onChange}
+        required
+        value={value}
+      />
+    );
+  }
+
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-slate-800">{label}</span>
@@ -971,17 +975,34 @@ function DateFilter({
   value: string;
 }>) {
   return (
-    <label className="block">
-      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</span>
-      <input
-        className="form-control h-11 rounded-xl border border-border bg-white px-3 text-sm outline-none focus:border-[#19C93B]/50 focus:ring-4 focus:ring-[#19C93B]/10"
-        min={min}
-        onChange={(event) => onChange(event.target.value)}
-        type="date"
-        value={value}
-      />
-    </label>
+    <DatePickerField
+      displayFormat="sheet"
+      label={label}
+      labelClassName="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500"
+      min={min}
+      onChange={onChange}
+      value={value}
+    />
   );
+}
+
+function normalizeDraftRow(row: DraftRow): ProductionEntryPayload | null {
+  const payload = {
+    date: row.date,
+    shift: row.shift,
+    machine_number: row.machine_number.trim(),
+    operator_name: row.operator_name.trim(),
+    part_number: row.part_number.trim(),
+    part_name: row.part_name.trim(),
+    cycle_time_seconds: Number(row.cycle_time_seconds || 0),
+    target_per_hour: Number(row.target_per_hour || 0),
+    daily_target: Number(row.daily_target || 0),
+    actual_production: Number(row.actual_production || 0),
+    remarks: row.remarks?.trim() || null,
+  };
+
+  if (!payload.machine_number || !payload.operator_name || !payload.part_number || !payload.part_name) return null;
+  return payload;
 }
 
 function getEfficiency(actual: number, target: number) {

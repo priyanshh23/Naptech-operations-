@@ -1,6 +1,18 @@
 import type {
   AuthResponse,
+  CalibrationSheet,
+  CalibrationSheetListResponse,
+  CalibrationSheetPayload,
   DashboardSummary,
+  GaugeHistoryCard,
+  GaugeHistoryCardListResponse,
+  GaugeHistoryCardPayload,
+  GaugeInventory,
+  GaugeInventoryListResponse,
+  GaugeInventoryPayload,
+  GaugeStock,
+  GaugeStockListResponse,
+  GaugeStockPayload,
   InventoryBalancePreview,
   InventoryEntry,
   InventoryEntryListResponse,
@@ -387,6 +399,7 @@ type ApiQualityRejection = {
   reason: string;
   cause: string;
   cr_mr: "CR" | "MR";
+  job_work: "Yes" | "No";
   remarks: string | null;
   updated_at: string;
 };
@@ -403,6 +416,7 @@ function fromApiQuality(row: ApiQualityRejection): QualityRejection {
     reason: row.reason,
     cause: row.cause,
     crMr: row.cr_mr,
+    jobWork: row.job_work ?? "No",
     remarks: row.remarks ?? "",
     timestamp: row.updated_at,
   };
@@ -419,6 +433,7 @@ function toApiQuality(payload: QualityRejectionPayload) {
     reason: payload.reason,
     cause: payload.cause,
     cr_mr: payload.crMr,
+    job_work: payload.jobWork,
     remarks: payload.remarks || null,
   };
 }
@@ -434,6 +449,7 @@ function toApiQualityUpdate(payload: Partial<QualityRejectionPayload>) {
     ...(payload.reason !== undefined ? { reason: payload.reason } : {}),
     ...(payload.cause !== undefined ? { cause: payload.cause } : {}),
     ...(payload.crMr !== undefined ? { cr_mr: payload.crMr } : {}),
+    ...(payload.jobWork !== undefined ? { job_work: payload.jobWork } : {}),
     ...(payload.remarks !== undefined ? { remarks: payload.remarks || null } : {}),
   };
 }
@@ -464,6 +480,331 @@ export async function updateQualityRejection(entryId: number, payload: Partial<Q
 
 export async function deleteQualityRejection(entryId: number): Promise<void> {
   await request<undefined>(`/quality-rejections/${entryId}`, {
+    method: "DELETE",
+  });
+}
+
+type ApiGaugeInventory = {
+  id: number;
+  gauge_name: string;
+  gauge_specification: string;
+  gauge_type: string;
+  gauge_qty: number;
+  gauge_no: string;
+  wear_and_tear: "Yes" | "No";
+  gauge_company: string;
+  created_by: string;
+  updated_at: string;
+};
+
+function fromApiGaugeInventory(row: ApiGaugeInventory): GaugeInventory {
+  return {
+    id: row.id,
+    gaugeName: row.gauge_name,
+    gaugeSpecification: row.gauge_specification,
+    gaugeType: row.gauge_type,
+    gaugeQty: row.gauge_qty,
+    gaugeNo: row.gauge_no,
+    wearAndTear: row.wear_and_tear,
+    gaugeCompany: row.gauge_company,
+    createdBy: row.created_by,
+    updatedAt: row.updated_at,
+  };
+}
+
+function toApiGaugeInventory(payload: Partial<GaugeInventoryPayload>) {
+  return {
+    ...(payload.gaugeName !== undefined ? { gauge_name: payload.gaugeName } : {}),
+    ...(payload.gaugeSpecification !== undefined ? { gauge_specification: payload.gaugeSpecification } : {}),
+    ...(payload.gaugeType !== undefined ? { gauge_type: payload.gaugeType } : {}),
+    ...(payload.gaugeQty !== undefined ? { gauge_qty: payload.gaugeQty } : {}),
+    ...(payload.gaugeNo !== undefined ? { gauge_no: payload.gaugeNo } : {}),
+    ...(payload.wearAndTear !== undefined ? { wear_and_tear: payload.wearAndTear } : {}),
+    ...(payload.gaugeCompany !== undefined ? { gauge_company: payload.gaugeCompany } : {}),
+  };
+}
+
+export async function getGaugeInventory(params?: { search?: string }): Promise<GaugeInventoryListResponse> {
+  const query = new URLSearchParams();
+  if (params?.search) query.set("search", params.search);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  const response = await request<{ items: ApiGaugeInventory[]; total: number }>(`/gauge-inventory${suffix}`);
+  return { items: response.items.map(fromApiGaugeInventory), total: response.total };
+}
+
+export async function createGaugeInventory(payload: GaugeInventoryPayload): Promise<GaugeInventory> {
+  const response = await request<ApiGaugeInventory>("/gauge-inventory", {
+    method: "POST",
+    body: JSON.stringify(toApiGaugeInventory(payload)),
+  });
+  return fromApiGaugeInventory(response);
+}
+
+export async function updateGaugeInventory(entryId: number, payload: Partial<GaugeInventoryPayload>): Promise<GaugeInventory> {
+  const response = await request<ApiGaugeInventory>(`/gauge-inventory/${entryId}`, {
+    method: "PUT",
+    body: JSON.stringify(toApiGaugeInventory(payload)),
+  });
+  return fromApiGaugeInventory(response);
+}
+
+export async function deleteGaugeInventory(entryId: number): Promise<void> {
+  await request<undefined>(`/gauge-inventory/${entryId}`, {
+    method: "DELETE",
+  });
+}
+
+type ApiGaugeStock = {
+  id: number;
+  gauge_stock_qty: number;
+  gauge_type: string;
+  gauge_part_name: string;
+  created_by: string;
+  updated_at: string;
+};
+
+function fromApiGaugeStock(row: ApiGaugeStock): GaugeStock {
+  return {
+    id: row.id,
+    gaugeStockQty: row.gauge_stock_qty,
+    gaugeType: row.gauge_type,
+    gaugePartName: row.gauge_part_name,
+    createdBy: row.created_by,
+    updatedAt: row.updated_at,
+  };
+}
+
+function toApiGaugeStock(payload: Partial<GaugeStockPayload>) {
+  return {
+    ...(payload.gaugeStockQty !== undefined ? { gauge_stock_qty: payload.gaugeStockQty } : {}),
+    ...(payload.gaugeType !== undefined ? { gauge_type: payload.gaugeType } : {}),
+    ...(payload.gaugePartName !== undefined ? { gauge_part_name: payload.gaugePartName } : {}),
+  };
+}
+
+export async function getGaugeStock(params?: { search?: string }): Promise<GaugeStockListResponse> {
+  const query = new URLSearchParams();
+  if (params?.search) query.set("search", params.search);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  const response = await request<{ items: ApiGaugeStock[]; total: number }>(`/gauge-stock${suffix}`);
+  return { items: response.items.map(fromApiGaugeStock), total: response.total };
+}
+
+export async function createGaugeStock(payload: GaugeStockPayload): Promise<GaugeStock> {
+  const response = await request<ApiGaugeStock>("/gauge-stock", {
+    method: "POST",
+    body: JSON.stringify(toApiGaugeStock(payload)),
+  });
+  return fromApiGaugeStock(response);
+}
+
+export async function updateGaugeStock(entryId: number, payload: Partial<GaugeStockPayload>): Promise<GaugeStock> {
+  const response = await request<ApiGaugeStock>(`/gauge-stock/${entryId}`, {
+    method: "PUT",
+    body: JSON.stringify(toApiGaugeStock(payload)),
+  });
+  return fromApiGaugeStock(response);
+}
+
+export async function deleteGaugeStock(entryId: number): Promise<void> {
+  await request<undefined>(`/gauge-stock/${entryId}`, {
+    method: "DELETE",
+  });
+}
+
+type ApiCalibrationSheet = {
+  id: number;
+  serial_number: string;
+  equipment_name: string;
+  make: string;
+  equipment_no: string;
+  quantity: number;
+  range_size: string;
+  least_count: string;
+  frequency_calibration: string;
+  calibrated_on: string;
+  calibration_due_on: string;
+  location: string;
+  remark: string;
+  created_by: string;
+  updated_at: string;
+};
+
+function fromApiCalibrationSheet(row: ApiCalibrationSheet): CalibrationSheet {
+  return {
+    id: row.id,
+    serialNumber: row.serial_number,
+    equipmentName: row.equipment_name,
+    make: row.make,
+    equipmentNo: row.equipment_no,
+    quantity: row.quantity,
+    rangeSize: row.range_size,
+    leastCount: row.least_count,
+    frequencyCalibration: row.frequency_calibration,
+    calibratedOn: row.calibrated_on,
+    calibrationDueOn: row.calibration_due_on,
+    location: row.location,
+    remark: row.remark ?? "",
+    createdBy: row.created_by,
+    updatedAt: row.updated_at,
+  };
+}
+
+function toApiCalibrationSheet(payload: Partial<CalibrationSheetPayload>) {
+  return {
+    ...(payload.serialNumber !== undefined ? { serial_number: payload.serialNumber } : {}),
+    ...(payload.equipmentName !== undefined ? { equipment_name: payload.equipmentName } : {}),
+    ...(payload.make !== undefined ? { make: payload.make } : {}),
+    ...(payload.equipmentNo !== undefined ? { equipment_no: payload.equipmentNo } : {}),
+    ...(payload.quantity !== undefined ? { quantity: payload.quantity } : {}),
+    ...(payload.rangeSize !== undefined ? { range_size: payload.rangeSize } : {}),
+    ...(payload.leastCount !== undefined ? { least_count: payload.leastCount } : {}),
+    ...(payload.frequencyCalibration !== undefined ? { frequency_calibration: payload.frequencyCalibration } : {}),
+    ...(payload.calibratedOn !== undefined ? { calibrated_on: payload.calibratedOn } : {}),
+    ...(payload.calibrationDueOn !== undefined ? { calibration_due_on: payload.calibrationDueOn } : {}),
+    ...(payload.location !== undefined ? { location: payload.location } : {}),
+    ...(payload.remark !== undefined ? { remark: payload.remark } : {}),
+  };
+}
+
+export async function getCalibrationSheets(params?: { search?: string }): Promise<CalibrationSheetListResponse> {
+  const query = new URLSearchParams();
+  if (params?.search) query.set("search", params.search);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  const response = await request<{ items: ApiCalibrationSheet[]; total: number }>(`/calibration-sheets${suffix}`);
+  return { items: response.items.map(fromApiCalibrationSheet), total: response.total };
+}
+
+export async function createCalibrationSheet(payload: CalibrationSheetPayload): Promise<CalibrationSheet> {
+  const response = await request<ApiCalibrationSheet>("/calibration-sheets", {
+    method: "POST",
+    body: JSON.stringify(toApiCalibrationSheet(payload)),
+  });
+  return fromApiCalibrationSheet(response);
+}
+
+export async function updateCalibrationSheet(entryId: number, payload: Partial<CalibrationSheetPayload>): Promise<CalibrationSheet> {
+  const response = await request<ApiCalibrationSheet>(`/calibration-sheets/${entryId}`, {
+    method: "PUT",
+    body: JSON.stringify(toApiCalibrationSheet(payload)),
+  });
+  return fromApiCalibrationSheet(response);
+}
+
+export async function deleteCalibrationSheet(entryId: number): Promise<void> {
+  await request<undefined>(`/calibration-sheets/${entryId}`, {
+    method: "DELETE",
+  });
+}
+
+type ApiGaugeHistoryCard = {
+  id: number;
+  description: string;
+  control_no: string;
+  validation_standard: string;
+  location: string;
+  frequency_of_validation: string;
+  serial_number: string;
+  inspection_item: string;
+  specification: string;
+  inspection_instruments: string;
+  remarks: string;
+  validation_date: string;
+  observation_a: string;
+  observation_b: string;
+  observation_c: string;
+  observation_d: string;
+  observation_e: string;
+  judgment: string;
+  due_date: string;
+  rectification_done: string;
+  inspection_by: string;
+  hod: string;
+  created_by: string;
+  updated_at: string;
+};
+
+function fromApiGaugeHistoryCard(row: ApiGaugeHistoryCard): GaugeHistoryCard {
+  return {
+    id: row.id,
+    description: row.description,
+    controlNo: row.control_no,
+    validationStandard: row.validation_standard,
+    location: row.location,
+    frequencyOfValidation: row.frequency_of_validation,
+    serialNumber: row.serial_number,
+    inspectionItem: row.inspection_item,
+    specification: row.specification,
+    inspectionInstruments: row.inspection_instruments,
+    remarks: row.remarks ?? "",
+    validationDate: row.validation_date,
+    observationA: row.observation_a ?? "",
+    observationB: row.observation_b ?? "",
+    observationC: row.observation_c ?? "",
+    observationD: row.observation_d ?? "",
+    observationE: row.observation_e ?? "",
+    judgment: row.judgment,
+    dueDate: row.due_date,
+    rectificationDone: row.rectification_done ?? "",
+    inspectionBy: row.inspection_by,
+    hod: row.hod,
+    createdBy: row.created_by,
+    updatedAt: row.updated_at,
+  };
+}
+
+function toApiGaugeHistoryCard(payload: Partial<GaugeHistoryCardPayload>) {
+  return {
+    ...(payload.description !== undefined ? { description: payload.description } : {}),
+    ...(payload.controlNo !== undefined ? { control_no: payload.controlNo } : {}),
+    ...(payload.validationStandard !== undefined ? { validation_standard: payload.validationStandard } : {}),
+    ...(payload.location !== undefined ? { location: payload.location } : {}),
+    ...(payload.frequencyOfValidation !== undefined ? { frequency_of_validation: payload.frequencyOfValidation } : {}),
+    ...(payload.serialNumber !== undefined ? { serial_number: payload.serialNumber } : {}),
+    ...(payload.inspectionItem !== undefined ? { inspection_item: payload.inspectionItem } : {}),
+    ...(payload.specification !== undefined ? { specification: payload.specification } : {}),
+    ...(payload.inspectionInstruments !== undefined ? { inspection_instruments: payload.inspectionInstruments } : {}),
+    ...(payload.remarks !== undefined ? { remarks: payload.remarks } : {}),
+    ...(payload.validationDate !== undefined ? { validation_date: payload.validationDate } : {}),
+    ...(payload.observationA !== undefined ? { observation_a: payload.observationA } : {}),
+    ...(payload.observationB !== undefined ? { observation_b: payload.observationB } : {}),
+    ...(payload.observationC !== undefined ? { observation_c: payload.observationC } : {}),
+    ...(payload.observationD !== undefined ? { observation_d: payload.observationD } : {}),
+    ...(payload.observationE !== undefined ? { observation_e: payload.observationE } : {}),
+    ...(payload.judgment !== undefined ? { judgment: payload.judgment } : {}),
+    ...(payload.dueDate !== undefined ? { due_date: payload.dueDate } : {}),
+    ...(payload.rectificationDone !== undefined ? { rectification_done: payload.rectificationDone } : {}),
+    ...(payload.inspectionBy !== undefined ? { inspection_by: payload.inspectionBy } : {}),
+    ...(payload.hod !== undefined ? { hod: payload.hod } : {}),
+  };
+}
+
+export async function getGaugeHistoryCards(params?: { search?: string }): Promise<GaugeHistoryCardListResponse> {
+  const query = new URLSearchParams();
+  if (params?.search) query.set("search", params.search);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  const response = await request<{ items: ApiGaugeHistoryCard[]; total: number }>(`/gauge-history-cards${suffix}`);
+  return { items: response.items.map(fromApiGaugeHistoryCard), total: response.total };
+}
+
+export async function createGaugeHistoryCard(payload: GaugeHistoryCardPayload): Promise<GaugeHistoryCard> {
+  const response = await request<ApiGaugeHistoryCard>("/gauge-history-cards", {
+    method: "POST",
+    body: JSON.stringify(toApiGaugeHistoryCard(payload)),
+  });
+  return fromApiGaugeHistoryCard(response);
+}
+
+export async function updateGaugeHistoryCard(entryId: number, payload: Partial<GaugeHistoryCardPayload>): Promise<GaugeHistoryCard> {
+  const response = await request<ApiGaugeHistoryCard>(`/gauge-history-cards/${entryId}`, {
+    method: "PUT",
+    body: JSON.stringify(toApiGaugeHistoryCard(payload)),
+  });
+  return fromApiGaugeHistoryCard(response);
+}
+
+export async function deleteGaugeHistoryCard(entryId: number): Promise<void> {
+  await request<undefined>(`/gauge-history-cards/${entryId}`, {
     method: "DELETE",
   });
 }

@@ -102,7 +102,8 @@ body {
 .data-table td {
   padding-left: 1rem;
   padding-right: 1rem;
-  vertical-align: middle;
+  text-align: left;
+  vertical-align: top;
 }
 
 .data-table th {
@@ -115,6 +116,14 @@ body {
 
 .data-table .table-actions {
   white-space: nowrap;
+}
+
+.data-table .table-actions button {
+  min-width: 74px;
+  justify-content: center;
+  overflow-wrap: normal;
+  white-space: nowrap;
+  word-break: normal;
 }
 
 .data-table .wrap-cell {
@@ -212,6 +221,18 @@ input[type="datetime-local"],
 select.form-control {
   -webkit-appearance: none;
   appearance: none;
+}
+
+button,
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+button {
+  overflow-wrap: normal;
+  white-space: normal;
 }
 
 .metric-grid {

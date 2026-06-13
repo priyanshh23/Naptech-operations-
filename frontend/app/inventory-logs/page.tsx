@@ -7,7 +7,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { AccessDenied } from "@/components/dashboard/access-denied";
-import { Badge, Button, Card, MobileRecordCard, PageHeader } from "@/components/ui";
+import { DatePickerField } from "@/components/ui/date-picker-field";
+import { Badge, Button, Card, PageHeader } from "@/components/ui";
 import { deleteInventoryEntry, getInventoryLogs, getInventorySummary, updateInventoryEntry } from "@/lib/api";
 import { downloadExcel, printPdf } from "@/lib/export-utils";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -213,7 +214,7 @@ export default function InventoryLogsPage() {
       />
 
       <Card className="rounded-2xl border-slate-200">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_220px_repeat(2,180px)_auto_auto] lg:items-end">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_minmax(180px,220px)_repeat(2,minmax(170px,190px))_minmax(120px,140px)_minmax(100px,120px)] xl:items-end">
           <label className="flex h-11 items-center gap-2 rounded-xl border border-border bg-white px-3">
             <Search size={18} className="text-muted-foreground" />
             <input
@@ -250,33 +251,16 @@ export default function InventoryLogsPage() {
             <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
               From Date
             </span>
-            <input
-              className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none"
-              onChange={(event) => {
-                setPage(1);
-                setDateFrom(event.target.value);
-              }}
-              type="date"
-              value={dateFrom}
-            />
+            <DatePickerField inputClassName="h-11 w-full rounded-xl border border-border bg-white px-3 pr-10 outline-none" onChange={(value) => { setPage(1); setDateFrom(value); }} value={dateFrom} />
           </label>
           <label className="block">
             <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
               To Date
             </span>
-            <input
-              className="form-control h-11 rounded-xl border border-border bg-white px-3 outline-none"
-              min={dateFrom || undefined}
-              onChange={(event) => {
-                setPage(1);
-                setDateTo(event.target.value);
-              }}
-              type="date"
-              value={dateTo}
-            />
+            <DatePickerField inputClassName="h-11 w-full rounded-xl border border-border bg-white px-3 pr-10 outline-none" min={dateFrom || undefined} onChange={(value) => { setPage(1); setDateTo(value); }} value={dateTo} />
           </label>
           <button
-            className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-11 min-w-0 rounded-xl border border-border px-4 py-2 text-center text-sm font-semibold leading-tight text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={isLoading}
             onClick={() => void loadLogs()}
             type="button"
@@ -284,7 +268,7 @@ export default function InventoryLogsPage() {
             {isLoading ? "Refreshing..." : "Refresh"}
           </button>
           <button
-            className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-11 min-w-0 rounded-xl border border-border px-4 py-2 text-center text-sm font-semibold leading-tight text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!search && !partNameFilter && !dateFrom && !dateTo}
             onClick={() => {
               setPage(1);
@@ -534,6 +518,10 @@ function EditField({
   type?: string;
   value: string;
 }>) {
+  if (type === "date") {
+    return <DatePickerField label={label} onChange={onChange} required value={value} />;
+  }
+
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-slate-800">{label}</span>
