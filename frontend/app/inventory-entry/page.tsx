@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AccessDenied } from "@/components/dashboard/access-denied";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { DatePickerField } from "@/components/ui/date-picker-field";
-import { Badge, Button, Card, PageHeader } from "@/components/ui";
+import { Badge, Button, Card, MobileRecordCard, PageHeader } from "@/components/ui";
 import { createInventoryEntry, deleteInventoryEntry, getInventoryEntries, getInventorySummary, updateInventoryEntry } from "@/lib/api";
 import { downloadExcel, printPdf } from "@/lib/export-utils";
 import { formatDate, formatDateTime } from "@/lib/format";

@@ -7,9 +7,7 @@ function getBackendCandidates() {
   if (configuredBackend) {
     candidates.add(configuredBackend.replace(/\/$/, ""));
   }
-  if (process.env.VERCEL) {
-    candidates.add(productionBackend);
-  } else {
+  if (!process.env.VERCEL) {
     candidates.add("http://127.0.0.1:8000");
     candidates.add("http://localhost:8000");
   }
@@ -30,8 +28,16 @@ async function proxy(request: NextRequest, params: { path: string[] }) {
 
   const rawBody = request.method === "GET" || request.method === "HEAD" ? undefined : await request.text();
   let lastError: unknown = null;
+  const backendCandidates = getBackendCandidates();
 
-  for (const backend of getBackendCandidates()) {
+  if (backendCandidates.length === 0) {
+    return NextResponse.json(
+      { detail: "Backend API URL is not configured. Set BACKEND_API_BASE_URL in the frontend deployment." },
+      { status: 503 },
+    );
+  }
+
+  for (const backend of backendCandidates) {
     try {
       const response = await fetch(`${backend}/${suffix}${query}`, {
         method: request.method,

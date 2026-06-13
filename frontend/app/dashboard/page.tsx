@@ -1,7 +1,7 @@
 "use client";
 
 import { Activity, AlertTriangle, ArrowRight, Boxes, CalendarDays, CheckCircle2, Download, Factory, FileText, Loader2, Shield, Wrench } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ActivityTimeline } from "@/components/dashboard/activity-timeline";
 import { AlertsPanel } from "@/components/dashboard/alerts-panel";
@@ -76,7 +76,6 @@ export default function DashboardPage() {
         date_to: dateTo || undefined,
       });
       setSummary(response);
-      void loadDepartmentRows();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to load live dashboard data.";
       setError(message);

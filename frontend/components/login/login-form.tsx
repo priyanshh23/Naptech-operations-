@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Eye, EyeOff, KeyRound, Lock, Mail } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { Button, Card } from "@/components/ui";
@@ -34,6 +35,7 @@ function GoogleMark() {
 }
 
 export function LoginForm() {
+  const router = useRouter();
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);

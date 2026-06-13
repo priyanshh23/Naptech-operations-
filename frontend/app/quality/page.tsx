@@ -138,10 +138,12 @@ export default function QualityPage() {
   const [editingGaugeHistoryId, setEditingGaugeHistoryId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const [savedQualityForms, setSavedQualityForms] = useState<Set<QualityTab>>(new Set());
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
+  const isSavingRef = useRef(false);
   const deletedIdsRef = useRef<Set<string>>(new Set());
   const { isReady: isUserReady, user: currentUser } = useStoredUser();
   const canDelete = canDeleteEntries(currentUser);
