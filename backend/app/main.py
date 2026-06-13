@@ -86,3 +86,8 @@ def startup() -> None:
 @app.get("/health", tags=["health"])
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/", tags=["health"])
+def root_check() -> dict[str, str]:
+    return {"status": "ok", "service": settings.app_name}
