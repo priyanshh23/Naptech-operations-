@@ -267,7 +267,22 @@ export default function QualityPage() {
   function beginQualityEdit() {
     setSavedQualityForms(new Set());
     setError("");
-    focusQualityEditor();
+  }
+
+  function cancelQualityEdit() {
+    setEditingRejectionId(null);
+    setEditingGaugeInventoryId(null);
+    setEditingGaugeStockId(null);
+    setEditingCalibrationId(null);
+    setEditingGaugeHistoryId(null);
+    setRejectionForm({ ...initialRejectionForm, date: rejectionForm.date, shift: rejectionForm.shift });
+    setGaugeInventoryForm(initialGaugeInventoryForm);
+    setGaugeStockForm(initialGaugeStockForm);
+    setCalibrationForm(initialCalibrationSheetForm);
+    setGaugeHistoryForm(initialGaugeHistoryForm);
+    setSavedQualityForms(new Set());
+    setMessage("");
+    setError("");
   }
 
   async function handleRejectionSubmit(event: FormEvent<HTMLFormElement>) {
@@ -516,6 +531,7 @@ export default function QualityPage() {
       remarks: row.remarks,
     });
     setMessage(`Editing rejection row ${row.serialNumber || row.id}.`);
+    focusQualityEditor();
   }
 
   function startGaugeInventoryEdit(row: GaugeInventory) {
@@ -532,6 +548,7 @@ export default function QualityPage() {
       gaugeCompany: row.gaugeCompany,
     });
     setMessage(`Editing gauge ${row.gaugeNo}.`);
+    focusQualityEditor();
   }
 
   function startGaugeStockEdit(row: GaugeStock) {
@@ -544,6 +561,7 @@ export default function QualityPage() {
       gaugePartName: row.gaugePartName,
     });
     setMessage(`Editing gauge stock for ${row.gaugePartName}.`);
+    focusQualityEditor();
   }
 
   function startCalibrationEdit(row: CalibrationSheet) {
@@ -565,6 +583,7 @@ export default function QualityPage() {
       remark: row.remark,
     });
     setMessage(`Editing calibration row ${row.serialNumber}.`);
+    focusQualityEditor();
   }
 
   function startGaugeHistoryEdit(row: GaugeHistoryCard) {
@@ -595,6 +614,7 @@ export default function QualityPage() {
       hod: row.hod,
     });
     setMessage(`Editing gauge history ${row.controlNo}.`);
+    focusQualityEditor();
   }
 
   async function handleDelete(scope: "rejection" | "gaugeInventory" | "gaugeStock" | "calibrationSheet" | "gaugeHistory", id: number, label: string) {
@@ -799,7 +819,175 @@ export default function QualityPage() {
 
       {message ? <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{message}</p> : null}
       {error ? <p className="mt-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</p> : null}
+
+      {editingRejectionId ? (
+        <EditModal
+          description="Update rejection details for this saved row."
+          error={error}
+          isSaving={isSaving}
+          onCancel={cancelQualityEdit}
+          onSubmit={handleRejectionSubmit}
+          saveLabel="Save Changes"
+          title="Edit daily rejection row"
+        >
+          <DatePickerField label="Date" onChange={(value) => setRejectionForm((current) => ({ ...current, date: value }))} required value={rejectionForm.date} />
+          <SelectField label="Shift" onChange={(value) => setRejectionForm((current) => ({ ...current, shift: value as QualityRejection["shift"] }))} value={rejectionForm.shift} options={["A", "B", "C"]} />
+          <Field label="S. No." onChange={(value) => setRejectionForm((current) => ({ ...current, serialNumber: value }))} placeholder="1" value={rejectionForm.serialNumber} />
+          <Field label="Machine Number" onChange={(value) => setRejectionForm((current) => ({ ...current, machineNumber: value }))} placeholder="CNC-08" value={rejectionForm.machineNumber} />
+          <Field label="Part Name" onChange={(value) => setRejectionForm((current) => ({ ...current, partName: value }))} placeholder="Ring Cap" value={rejectionForm.partName} />
+          <Field label="Rejection Qty." onChange={(value) => setRejectionForm((current) => ({ ...current, rejectionQuantity: Number(value || 0) }))} placeholder="1" type="number" value={String(rejectionForm.rejectionQuantity)} />
+          <Field label="Reason" onChange={(value) => setRejectionForm((current) => ({ ...current, reason: value }))} placeholder="Thread not OK" value={rejectionForm.reason} />
+          <SelectField label="CR / MR" onChange={(value) => setRejectionForm((current) => ({ ...current, crMr: value as QualityRejection["crMr"] }))} value={rejectionForm.crMr} options={["MR", "CR"]} />
+          <SelectField label="Job Work" onChange={(value) => setRejectionForm((current) => ({ ...current, jobWork: value as QualityRejection["jobWork"] }))} value={rejectionForm.jobWork} options={["No", "Yes"]} />
+          <Field label="Remarks" onChange={(value) => setRejectionForm((current) => ({ ...current, remarks: value }))} placeholder="Optional" value={rejectionForm.remarks} />
+        </EditModal>
+      ) : null}
+
+      {editingGaugeInventoryId ? (
+        <EditModal
+          description="Update gauge name, specification, quantity, condition, and company."
+          error={error}
+          isSaving={isSaving}
+          onCancel={cancelQualityEdit}
+          onSubmit={handleGaugeInventorySubmit}
+          saveLabel="Save Changes"
+          title="Edit gauge inventory"
+        >
+          <Field label="Gauge Name" onChange={(value) => setGaugeInventoryForm((current) => ({ ...current, gaugeName: value }))} placeholder="Ring Gauge" value={gaugeInventoryForm.gaugeName} />
+          <Field label="Gauge Specifications" onChange={(value) => setGaugeInventoryForm((current) => ({ ...current, gaugeSpecification: value }))} placeholder="M10 x 1.5" value={gaugeInventoryForm.gaugeSpecification} />
+          <Field label="Gauge Type" onChange={(value) => setGaugeInventoryForm((current) => ({ ...current, gaugeType: value }))} placeholder="Thread Plug" value={gaugeInventoryForm.gaugeType} />
+          <Field label="Gauge Qty" onChange={(value) => setGaugeInventoryForm((current) => ({ ...current, gaugeQty: Number(value || 0) }))} placeholder="1" type="number" value={String(gaugeInventoryForm.gaugeQty)} />
+          <Field label="Gauge No." onChange={(value) => setGaugeInventoryForm((current) => ({ ...current, gaugeNo: value }))} placeholder="G-001" value={gaugeInventoryForm.gaugeNo} />
+          <SelectField label="Wear and Tear" onChange={(value) => setGaugeInventoryForm((current) => ({ ...current, wearAndTear: value as GaugeInventory["wearAndTear"] }))} value={gaugeInventoryForm.wearAndTear} options={["No", "Yes"]} />
+          <Field label="Gauge Company" onChange={(value) => setGaugeInventoryForm((current) => ({ ...current, gaugeCompany: value }))} placeholder="Mitutoyo" value={gaugeInventoryForm.gaugeCompany} />
+        </EditModal>
+      ) : null}
+
+      {editingGaugeStockId ? (
+        <EditModal
+          description="Update gauge stock quantity, gauge type, and part name."
+          error={error}
+          isSaving={isSaving}
+          onCancel={cancelQualityEdit}
+          onSubmit={handleGaugeStockSubmit}
+          saveLabel="Save Changes"
+          title="Edit gauge stock"
+        >
+          <Field label="Gauge Stock Qty" onChange={(value) => setGaugeStockForm((current) => ({ ...current, gaugeStockQty: Number(value || 0) }))} placeholder="1" type="number" value={String(gaugeStockForm.gaugeStockQty)} />
+          <Field label="Gauge Type" onChange={(value) => setGaugeStockForm((current) => ({ ...current, gaugeType: value }))} placeholder="Ring Gauge" value={gaugeStockForm.gaugeType} />
+          <Field label="Gauge Part Name" onChange={(value) => setGaugeStockForm((current) => ({ ...current, gaugePartName: value }))} placeholder="Ring Cap" value={gaugeStockForm.gaugePartName} />
+        </EditModal>
+      ) : null}
+
+      {editingCalibrationId ? (
+        <EditModal
+          description="Update calibration plan details for this instrument row."
+          error={error}
+          isSaving={isSaving}
+          onCancel={cancelQualityEdit}
+          onSubmit={handleCalibrationSubmit}
+          saveLabel="Save Changes"
+          title="Edit calibration sheet row"
+        >
+          <Field label="S. No." onChange={(value) => setCalibrationForm((current) => ({ ...current, serialNumber: value }))} placeholder="1" value={calibrationForm.serialNumber} />
+          <Field label="Equipment Name" onChange={(value) => setCalibrationForm((current) => ({ ...current, equipmentName: value }))} placeholder="Air Gauge Unit" value={calibrationForm.equipmentName} />
+          <Field label="Make" onChange={(value) => setCalibrationForm((current) => ({ ...current, make: value }))} placeholder="Swaroop" value={calibrationForm.make} />
+          <Field label="Equipment No." onChange={(value) => setCalibrationForm((current) => ({ ...current, equipmentNo: value }))} placeholder="AGU-01" value={calibrationForm.equipmentNo} />
+          <Field label="Qty" onChange={(value) => setCalibrationForm((current) => ({ ...current, quantity: Number(value || 0) }))} placeholder="1" type="number" value={String(calibrationForm.quantity)} />
+          <Field label="Range / Size" onChange={(value) => setCalibrationForm((current) => ({ ...current, rangeSize: value }))} placeholder="+/-0.040 mm" value={calibrationForm.rangeSize} />
+          <Field label="Least Count" onChange={(value) => setCalibrationForm((current) => ({ ...current, leastCount: value }))} placeholder="0.001" value={calibrationForm.leastCount} />
+          <Field label="Frequency Calibration" onChange={(value) => setCalibrationForm((current) => ({ ...current, frequencyCalibration: value }))} placeholder="One year" value={calibrationForm.frequencyCalibration} />
+          <DatePickerField label="Calibrated On" onChange={(value) => setCalibrationForm((current) => ({ ...current, calibratedOn: value }))} outputFormat="sheet" placeholder="31.01.2026" required value={calibrationForm.calibratedOn} />
+          <DatePickerField label="Calibration Due On" onChange={(value) => setCalibrationForm((current) => ({ ...current, calibrationDueOn: value }))} outputFormat="sheet" placeholder="30.01.2027" required value={calibrationForm.calibrationDueOn} />
+          <Field label="Location" onChange={(value) => setCalibrationForm((current) => ({ ...current, location: value }))} placeholder="Shop Floor" value={calibrationForm.location} />
+          <Field label="Remark" onChange={(value) => setCalibrationForm((current) => ({ ...current, remark: value }))} placeholder="Optional" value={calibrationForm.remark} />
+        </EditModal>
+      ) : null}
+
+      {editingGaugeHistoryId ? (
+        <EditModal
+          description="Update gauge validation, inspection, observation, and approval details."
+          error={error}
+          isSaving={isSaving}
+          onCancel={cancelQualityEdit}
+          onSubmit={handleGaugeHistorySubmit}
+          saveLabel="Save Changes"
+          title="Edit gauge history card"
+        >
+          <Field label="Description" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, description: value }))} placeholder="Gauge description" value={gaugeHistoryForm.description} />
+          <Field label="Control No." onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, controlNo: value }))} placeholder="Control number" value={gaugeHistoryForm.controlNo} />
+          <Field label="Validation Standard" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, validationStandard: value }))} placeholder="WCP" value={gaugeHistoryForm.validationStandard} />
+          <Field label="Location" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, location: value }))} placeholder="Shop Floor" value={gaugeHistoryForm.location} />
+          <Field label="Frequency of Validation" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, frequencyOfValidation: value }))} placeholder="1 Year" value={gaugeHistoryForm.frequencyOfValidation} />
+          <Field label="Sr. No." onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, serialNumber: value }))} placeholder="A" value={gaugeHistoryForm.serialNumber} />
+          <Field label="Inspection Item" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, inspectionItem: value }))} placeholder="Inspection item" value={gaugeHistoryForm.inspectionItem} />
+          <Field label="Specification" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, specification: value }))} placeholder="Specification" value={gaugeHistoryForm.specification} />
+          <Field label="Inspection Instruments" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, inspectionInstruments: value }))} placeholder="Instrument" value={gaugeHistoryForm.inspectionInstruments} />
+          <Field label="Remarks" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, remarks: value }))} placeholder="Optional" value={gaugeHistoryForm.remarks} />
+          <DatePickerField label="Validation Date" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, validationDate: value }))} outputFormat="sheet" placeholder="25/01/2026" required value={gaugeHistoryForm.validationDate} />
+          <Field label="Observation A" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, observationA: value }))} placeholder="Optional" value={gaugeHistoryForm.observationA} />
+          <Field label="Observation B" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, observationB: value }))} placeholder="Optional" value={gaugeHistoryForm.observationB} />
+          <Field label="Observation C" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, observationC: value }))} placeholder="Optional" value={gaugeHistoryForm.observationC} />
+          <Field label="Observation D" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, observationD: value }))} placeholder="Optional" value={gaugeHistoryForm.observationD} />
+          <Field label="Observation E" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, observationE: value }))} placeholder="Optional" value={gaugeHistoryForm.observationE} />
+          <Field label="Judgment" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, judgment: value }))} placeholder="OK / NOT OK" value={gaugeHistoryForm.judgment} />
+          <DatePickerField label="Due Date" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, dueDate: value }))} outputFormat="sheet" placeholder="25/01/2027" required value={gaugeHistoryForm.dueDate} />
+          <Field label="Rectification Done" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, rectificationDone: value }))} placeholder="Optional" value={gaugeHistoryForm.rectificationDone} />
+          <Field label="Insp. By" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, inspectionBy: value }))} placeholder="Inspector" value={gaugeHistoryForm.inspectionBy} />
+          <Field label="HOD" onChange={(value) => setGaugeHistoryForm((current) => ({ ...current, hod: value }))} placeholder="HOD" value={gaugeHistoryForm.hod} />
+        </EditModal>
+      ) : null}
     </DashboardShell>
+  );
+}
+
+function EditModal({
+  children,
+  description,
+  error,
+  isSaving,
+  onCancel,
+  onSubmit,
+  saveLabel,
+  title,
+}: Readonly<{
+  children: ReactNode;
+  description: string;
+  error: string;
+  isSaving: boolean;
+  onCancel: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  saveLabel: string;
+  title: string;
+}>) {
+  return (
+    <div className="modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <Card className="modal-card max-h-[calc(100vh-2rem)] w-full max-w-5xl overflow-y-auto rounded-2xl shadow-2xl">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
+            <p className="text-sm text-muted-foreground">{description}</p>
+          </div>
+          <button className="rounded-xl border border-border p-2 text-slate-600" onClick={onCancel} type="button">
+            <X size={16} />
+          </button>
+        </div>
+
+        <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" onSubmit={onSubmit}>
+          {children}
+          {error ? <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 md:col-span-2 xl:col-span-3">{error}</p> : null}
+          <div className="flex flex-wrap items-center gap-3 md:col-span-2 xl:col-span-3">
+            <Button className="h-11 rounded-xl bg-red-500 px-5 hover:bg-red-600" disabled={isSaving} type="submit">
+              <Save size={16} />
+              {isSaving ? "Saving..." : saveLabel}
+            </Button>
+            <button className="min-h-11 rounded-xl border border-border px-5 py-2 text-sm font-semibold text-slate-700" onClick={onCancel} type="button">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Card>
+    </div>
   );
 }
 
