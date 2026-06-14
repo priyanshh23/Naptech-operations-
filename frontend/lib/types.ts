@@ -359,6 +359,11 @@ export type DashboardSummary = {
     value: number;
     color: string;
   }>;
+  inventory_movement_series: Array<{
+    shift: string;
+    planned: number;
+    completed: number;
+  }>;
   movement_series: Array<{
     shift: string;
     planned: number;

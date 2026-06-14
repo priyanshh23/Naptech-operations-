@@ -173,7 +173,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         return undefined as T;
       }
 
-      const payload = (await response.json()) as T;
+      const rawPayload = await response.text();
+      if (!rawPayload) {
+        notifyDataChanged(path, init?.method || "GET");
+        return undefined as T;
+      }
+
+      const payload = JSON.parse(rawPayload) as T;
       notifyDataChanged(path, init?.method || "GET");
       return payload;
     } catch (error) {

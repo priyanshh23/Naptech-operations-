@@ -33,9 +33,11 @@ export default function MaintenancePage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isFormSaved, setIsFormSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
+  const isSavingRef = useRef(false);
   const deletedJobIdsRef = useRef<Set<number>>(new Set());
   const { isReady: isUserReady, user: currentUser } = useStoredUser();
   const canDelete = canDeleteEntries(currentUser);
@@ -64,14 +66,15 @@ export default function MaintenancePage() {
   }, [search]);
 
   useEffect(() => {
-    if (!message || message.startsWith("Editing ")) return;
+    if ((!message || message.startsWith("Editing ")) && !isFormSaved) return;
 
     const timeoutId = window.setTimeout(() => {
       setMessage("");
+      setIsFormSaved(false);
     }, 3000);
 
     return () => window.clearTimeout(timeoutId);
-  }, [message]);
+  }, [isFormSaved, message]);
 
   if (!isUserReady) {
     return (
@@ -106,8 +109,12 @@ export default function MaintenancePage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSavingRef.current || isFormSaved) return;
+
     setMessage("");
     setError("");
+    isSavingRef.current = true;
+    setIsSaving(true);
 
     if (editingId) {
       try {
@@ -119,6 +126,9 @@ export default function MaintenancePage() {
         setMessage("Maintenance job updated.");
       } catch (error) {
         setError(error instanceof Error ? error.message : "Maintenance job could not be updated.");
+      } finally {
+        isSavingRef.current = false;
+        setIsSaving(false);
       }
       return;
     }
@@ -132,6 +142,9 @@ export default function MaintenancePage() {
       setMessage("Maintenance job saved to the table.");
     } catch (error) {
       setError(error instanceof Error ? error.message : "Maintenance job could not be saved.");
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
     }
   }
 
@@ -259,9 +272,9 @@ export default function MaintenancePage() {
             </select>
           </label>
           <Field label="Due By" onChange={(value) => updateForm({ dueBy: value })} placeholder="" type="datetime-local" value={form.dueBy} />
-          <Button className={`h-11 self-end rounded-xl ${isFormSaved ? "bg-emerald-500 hover:bg-emerald-500" : "bg-red-500 hover:bg-red-600"}`} disabled={isFormSaved || !form.machine || !form.team || !form.breakdownFrom || !form.breakdownTo || !form.reason || !form.dueBy} type="submit">
+          <Button className={`h-11 self-end rounded-xl ${isFormSaved ? "bg-emerald-500 hover:bg-emerald-500" : "bg-red-500 hover:bg-red-600"}`} disabled={isSaving || isFormSaved || !form.machine || !form.team || !form.breakdownFrom || !form.breakdownTo || !form.reason || !form.dueBy} type="submit">
             <Save size={16} />
-            {isFormSaved ? "Saved" : "Save Job"}
+            {isSaving ? "Saving..." : isFormSaved ? "Saved" : "Save Job"}
           </Button>
         </form>
 
@@ -459,9 +472,9 @@ export default function MaintenancePage() {
               </label>
               <Field label="Due By" onChange={(value) => updateForm({ dueBy: value })} placeholder="" type="datetime-local" value={form.dueBy} />
               <div className="flex items-end gap-3 md:col-span-2 xl:col-span-3">
-                <Button className={`h-11 rounded-xl ${isFormSaved ? "bg-emerald-500 hover:bg-emerald-500" : "bg-red-500 hover:bg-red-600"}`} disabled={isFormSaved || !form.machine || !form.team || !form.breakdownFrom || !form.breakdownTo || !form.reason || !form.dueBy} type="submit">
+                <Button className={`h-11 rounded-xl ${isFormSaved ? "bg-emerald-500 hover:bg-emerald-500" : "bg-red-500 hover:bg-red-600"}`} disabled={isSaving || isFormSaved || !form.machine || !form.team || !form.breakdownFrom || !form.breakdownTo || !form.reason || !form.dueBy} type="submit">
                   <Save size={16} />
-                  {isFormSaved ? "Saved" : "Save Changes"}
+                  {isSaving ? "Saving..." : isFormSaved ? "Saved" : "Save Changes"}
                 </Button>
                 <button
                   className="h-11 rounded-xl border border-border px-4 text-sm font-semibold text-slate-700"

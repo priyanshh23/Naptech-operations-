@@ -65,6 +65,8 @@ export default function ProductionPage() {
   const [savedDraftRowIds, setSavedDraftRowIds] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const savingDraftRowIdsRef = useRef<Set<string>>(new Set());
+  const savedDraftPayloadsRef = useRef<Set<string>>(new Set());
   const deletedEntryIdsRef = useRef<Set<number>>(new Set());
   const { isReady: isUserReady, user: currentUser } = useStoredUser();
   const canDelete = canDeleteEntries(currentUser);
@@ -179,7 +181,7 @@ export default function ProductionPage() {
   }
 
   async function handleSaveDraftRow(row: DraftRow) {
-    if (savedDraftRowIds.has(row.rowId)) return;
+    if (savedDraftRowIds.has(row.rowId) || savingDraftRowIdsRef.current.has(row.rowId)) return;
 
     setError("");
     setMessage("");
@@ -190,16 +192,33 @@ export default function ProductionPage() {
       return;
     }
 
+    const payloadKey = getProductionPayloadKey(payload);
+    if (savedDraftPayloadsRef.current.has(payloadKey)) {
+      setError("This production row has already been saved. Change the row before saving again.");
+      return;
+    }
+
+    savingDraftRowIdsRef.current.add(row.rowId);
     setIsSaving(true);
     try {
       await createProductionEntries([payload]);
+      savedDraftPayloadsRef.current.add(payloadKey);
       setSavedDraftRowIds((current) => new Set(current).add(row.rowId));
       setMessage(`Production row saved for ${payload.machine_number} / ${payload.part_name}.`);
       await loadProductionData();
+      window.setTimeout(() => {
+        setSavedDraftRowIds((current) => {
+          const next = new Set(current);
+          next.delete(row.rowId);
+          return next;
+        });
+        setDraftRows((current) => current.map((item) => (item.rowId === row.rowId ? emptyDraft(row.rowId) : item)));
+      }, 3000);
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Production row could not be saved.";
       setError(detail);
     } finally {
+      savingDraftRowIdsRef.current.delete(row.rowId);
       setIsSaving(false);
     }
   }
@@ -372,6 +391,7 @@ export default function ProductionPage() {
               <tbody>
                 {draftRows.map((row) => {
                   const isSaved = savedDraftRowIds.has(row.rowId);
+                  const canSaveRow = Boolean(row.machine_number.trim() && row.operator_name.trim() && row.part_number.trim() && row.part_name.trim());
 
                   return (
                   <tr className="border-b border-border last:border-0" key={row.rowId}>
@@ -406,7 +426,7 @@ export default function ProductionPage() {
                             ? "border-emerald-500 bg-emerald-500"
                             : "border-red-500 bg-red-500 hover:bg-red-600"
                         } disabled:cursor-not-allowed disabled:opacity-90`}
-                        disabled={isSaving || isSaved}
+                        disabled={isSaving || isSaved || !canSaveRow}
                         onClick={() => void handleSaveDraftRow(row)}
                         type="button"
                       >
@@ -1003,6 +1023,13 @@ function normalizeDraftRow(row: DraftRow): ProductionEntryPayload | null {
 
   if (!payload.machine_number || !payload.operator_name || !payload.part_number || !payload.part_name) return null;
   return payload;
+}
+
+function getProductionPayloadKey(payload: ProductionEntryPayload) {
+  return JSON.stringify({
+    ...payload,
+    remarks: payload.remarks || "",
+  });
 }
 
 function getEfficiency(actual: number, target: number) {

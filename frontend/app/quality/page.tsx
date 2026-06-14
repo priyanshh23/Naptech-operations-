@@ -195,6 +195,16 @@ export default function QualityPage() {
     return () => window.clearTimeout(timeoutId);
   }, [message]);
 
+  useEffect(() => {
+    if (savedQualityForms.size === 0) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setSavedQualityForms(new Set());
+    }, 3000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [savedQualityForms]);
+
   if (!isUserReady) {
     return (
       <DashboardShell>
@@ -250,7 +260,7 @@ export default function QualityPage() {
 
   async function handleRejectionSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isSavingRef.current) return;
+    if (isSavingRef.current || savedQualityForms.has("rejections")) return;
 
     setMessage("");
     setError("");
@@ -279,8 +289,12 @@ export default function QualityPage() {
 
   async function handleGaugeInventorySubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSavingRef.current || savedQualityForms.has("gaugeInventory")) return;
+
     setMessage("");
     setError("");
+    isSavingRef.current = true;
+    setIsSaving(true);
 
     try {
       const payload = normalizeGaugeInventoryForm();
@@ -297,13 +311,20 @@ export default function QualityPage() {
       await loadAllQualityData();
     } catch (error) {
       setError(error instanceof Error ? error.message : "Gauge inventory row could not be saved.");
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
     }
   }
 
   async function handleGaugeStockSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSavingRef.current || savedQualityForms.has("gaugeStock")) return;
+
     setMessage("");
     setError("");
+    isSavingRef.current = true;
+    setIsSaving(true);
 
     try {
       const payload = normalizeGaugeStockForm();
@@ -320,13 +341,20 @@ export default function QualityPage() {
       await loadAllQualityData();
     } catch (error) {
       setError(error instanceof Error ? error.message : "Gauge stock row could not be saved.");
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
     }
   }
 
   async function handleCalibrationSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSavingRef.current || savedQualityForms.has("calibrationSheet")) return;
+
     setMessage("");
     setError("");
+    isSavingRef.current = true;
+    setIsSaving(true);
 
     try {
       const payload = normalizeCalibrationForm();
@@ -343,13 +371,20 @@ export default function QualityPage() {
       await loadAllQualityData();
     } catch (error) {
       setError(error instanceof Error ? error.message : "Calibration sheet row could not be saved.");
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
     }
   }
 
   async function handleGaugeHistorySubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSavingRef.current || savedQualityForms.has("gaugeHistory")) return;
+
     setMessage("");
     setError("");
+    isSavingRef.current = true;
+    setIsSaving(true);
 
     try {
       const payload = normalizeGaugeHistoryForm();
@@ -366,6 +401,9 @@ export default function QualityPage() {
       await loadAllQualityData();
     } catch (error) {
       setError(error instanceof Error ? error.message : "Gauge history card row could not be saved.");
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
     }
   }
 

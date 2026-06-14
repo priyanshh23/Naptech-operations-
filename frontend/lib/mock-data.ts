@@ -178,6 +178,7 @@ export const dashboardSummary: DashboardSummary = {
   },
   kpi_metrics: [],
   inventory_categories: [],
+  inventory_movement_series: [],
   movement_series: [],
   alerts: [],
   low_stock_items: [],

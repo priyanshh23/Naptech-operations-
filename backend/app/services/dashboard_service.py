@@ -24,7 +24,7 @@ from app.schemas.dashboard import (
     DashboardSummary,
 )
 from app.services.inventory_service import get_inventory_summary
-from app.services.production_service import get_machine_analytics
+from app.services.production_service import get_machine_analytics, get_production_summary
 from app.utils.config import settings
 
 INVENTORY_COLORS = ["#19C93B", "#A3FF12", "#2563EB", "#F59E0B", "#AAB2C0"]
@@ -111,6 +111,7 @@ def get_empty_dashboard_summary() -> DashboardSummary:
             ),
         ],
         inventory_categories=[],
+        inventory_movement_series=[],
         movement_series=[],
         alerts=[],
         low_stock_items=[],
@@ -144,13 +145,22 @@ def get_dashboard_summary(
         for index, item in enumerate(latest_part_balances)
     ]
 
-    movement_series = [
+    inventory_movement_series = [
         DashboardMovementPoint(
             shift=point.label,
             planned=point.in_quantity,
             completed=point.out_quantity,
         )
         for point in inventory_summary.movement_series
+    ]
+    production_summary_data = get_production_summary(db, date_from, date_to)
+    movement_series = [
+        DashboardMovementPoint(
+            shift=point.label,
+            planned=point.target,
+            completed=point.actual,
+        )
+        for point in production_summary_data.production_vs_target
     ]
 
     kpi_metrics = [
@@ -159,21 +169,21 @@ def get_dashboard_summary(
             value=inventory_summary.total_inventory,
             trend="Live balance",
             trend_direction="up",
-            sparkline=[DashboardMetricPoint(value=max(point.completed, 0)) for point in movement_series[-6:]] or [DashboardMetricPoint(value=0)],
+            sparkline=[DashboardMetricPoint(value=max(point.completed, 0)) for point in inventory_movement_series[-6:]] or [DashboardMetricPoint(value=0)],
         ),
         DashboardMetric(
             label="Total IN Quantity",
             value=inventory_summary.total_in_quantity,
             trend="Material received",
             trend_direction="up",
-            sparkline=[DashboardMetricPoint(value=max(point.planned, 0)) for point in movement_series[-6:]] or [DashboardMetricPoint(value=0)],
+            sparkline=[DashboardMetricPoint(value=max(point.planned, 0)) for point in inventory_movement_series[-6:]] or [DashboardMetricPoint(value=0)],
         ),
         DashboardMetric(
             label="Total OUT Quantity",
             value=inventory_summary.total_out_quantity,
             trend="Material issued",
             trend_direction="up",
-            sparkline=[DashboardMetricPoint(value=max(point.completed, 0)) for point in movement_series[-6:]] or [DashboardMetricPoint(value=0)],
+            sparkline=[DashboardMetricPoint(value=max(point.completed, 0)) for point in inventory_movement_series[-6:]] or [DashboardMetricPoint(value=0)],
         ),
         DashboardMetric(
             label="Low Stock Items",
@@ -339,6 +349,7 @@ def get_dashboard_summary(
         maintenance_overview=maintenance_overview,
         kpi_metrics=kpi_metrics,
         inventory_categories=inventory_categories,
+        inventory_movement_series=inventory_movement_series,
         movement_series=movement_series,
         alerts=alerts[:4],
         low_stock_items=low_stock_items,

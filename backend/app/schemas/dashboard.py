@@ -83,6 +83,7 @@ class DashboardSummary(BaseModel):
     maintenance_overview: DashboardMaintenanceOverview
     kpi_metrics: list[DashboardMetric]
     inventory_categories: list[DashboardInventorySlice]
+    inventory_movement_series: list[DashboardMovementPoint]
     movement_series: list[DashboardMovementPoint]
     alerts: list[DashboardAlert]
     low_stock_items: list[DashboardLowInventoryItem]

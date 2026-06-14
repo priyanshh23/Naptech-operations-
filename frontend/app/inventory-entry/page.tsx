@@ -40,6 +40,7 @@ export default function InventoryEntryPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const isSavingRef = useRef(false);
   const deletedEntryIdsRef = useRef<Set<number>>(new Set());
   const { isReady: isUserReady, user: currentUser } = useStoredUser();
   const canDelete = canDeleteEntries(currentUser);
@@ -77,14 +78,15 @@ export default function InventoryEntryPage() {
   }, [search, dateFrom, dateTo]);
 
   useEffect(() => {
-    if (!successMessage.startsWith("Inventory entry")) return;
+    if (!isFormSaved && !successMessage.startsWith("Inventory entry")) return;
 
     const timeoutId = window.setTimeout(() => {
       setSuccessMessage("");
+      setIsFormSaved(false);
     }, 3000);
 
     return () => window.clearTimeout(timeoutId);
-  }, [successMessage]);
+  }, [isFormSaved, successMessage]);
 
   if (!isUserReady) {
     return (
@@ -132,8 +134,11 @@ export default function InventoryEntryPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSavingRef.current || isFormSaved) return;
+
     setError("");
     setSuccessMessage("");
+    isSavingRef.current = true;
     setIsSaving(true);
 
     try {
@@ -171,6 +176,7 @@ export default function InventoryEntryPage() {
       const message = error instanceof Error ? error.message : "Entry could not be saved.";
       setError(message);
     } finally {
+      isSavingRef.current = false;
       setIsSaving(false);
     }
   }

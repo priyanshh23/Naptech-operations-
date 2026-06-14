@@ -166,7 +166,7 @@ export default function DashboardPage() {
       {
         title: "Inventory Chart Data",
         columns: chartExportColumns,
-        rows: inventoryCategories.map((item) => ({ label: item.name, planned: "", actual: `${item.value}%` })),
+        rows: inventoryMovementSeries.map((item) => ({ label: item.shift, planned: item.planned, actual: item.completed })),
       },
       {
         title: "Production Chart Data",
@@ -211,6 +211,7 @@ export default function DashboardPage() {
   ), [summary]);
 
   const movementSeries: ProductionPoint[] = useMemo(() => summary?.movement_series ?? [], [summary]);
+  const inventoryMovementSeries: ProductionPoint[] = useMemo(() => summary?.inventory_movement_series ?? [], [summary]);
   const alerts: AlertItem[] = useMemo(() => summary?.alerts ?? [], [summary]);
   const lowStockItems: LowStockItem[] = useMemo(() => (
     summary?.low_stock_items.map((item) => ({
@@ -446,7 +447,7 @@ export default function DashboardPage() {
           </section>
 
           <section className="mt-4 grid gap-4 xl:grid-cols-12">
-            <InventoryOverview data={inventoryCategories} totalBalance={summary.total_inventory} />
+            <InventoryOverview data={inventoryCategories} movementData={inventoryMovementSeries} totalBalance={summary.total_inventory} />
             <ProductionOverview data={movementSeries} />
           </section>
 
