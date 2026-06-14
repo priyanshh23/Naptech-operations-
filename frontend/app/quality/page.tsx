@@ -258,9 +258,21 @@ export default function QualityPage() {
     });
   }
 
+  function focusQualityEditor() {
+    window.setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 0);
+  }
+
+  function beginQualityEdit() {
+    setSavedQualityForms(new Set());
+    setError("");
+    focusQualityEditor();
+  }
+
   async function handleRejectionSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isSavingRef.current || savedQualityForms.has("rejections")) return;
+    if (isSavingRef.current || (!editingRejectionId && savedQualityForms.has("rejections"))) return;
 
     setMessage("");
     setError("");
@@ -289,7 +301,7 @@ export default function QualityPage() {
 
   async function handleGaugeInventorySubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isSavingRef.current || savedQualityForms.has("gaugeInventory")) return;
+    if (isSavingRef.current || (!editingGaugeInventoryId && savedQualityForms.has("gaugeInventory"))) return;
 
     setMessage("");
     setError("");
@@ -319,7 +331,7 @@ export default function QualityPage() {
 
   async function handleGaugeStockSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isSavingRef.current || savedQualityForms.has("gaugeStock")) return;
+    if (isSavingRef.current || (!editingGaugeStockId && savedQualityForms.has("gaugeStock"))) return;
 
     setMessage("");
     setError("");
@@ -349,7 +361,7 @@ export default function QualityPage() {
 
   async function handleCalibrationSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isSavingRef.current || savedQualityForms.has("calibrationSheet")) return;
+    if (isSavingRef.current || (!editingCalibrationId && savedQualityForms.has("calibrationSheet"))) return;
 
     setMessage("");
     setError("");
@@ -379,7 +391,7 @@ export default function QualityPage() {
 
   async function handleGaugeHistorySubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isSavingRef.current || savedQualityForms.has("gaugeHistory")) return;
+    if (isSavingRef.current || (!editingGaugeHistoryId && savedQualityForms.has("gaugeHistory"))) return;
 
     setMessage("");
     setError("");
@@ -487,9 +499,9 @@ export default function QualityPage() {
   }
 
   function startRejectionEdit(row: QualityRejection) {
+    beginQualityEdit();
     setEditingRejectionId(row.id);
     setActiveTab("rejections");
-    setQualityFormSaved("rejections", false);
     setRejectionForm({
       date: row.date.slice(0, 10),
       shift: row.shift,
@@ -507,9 +519,9 @@ export default function QualityPage() {
   }
 
   function startGaugeInventoryEdit(row: GaugeInventory) {
+    beginQualityEdit();
     setEditingGaugeInventoryId(row.id);
     setActiveTab("gaugeInventory");
-    setQualityFormSaved("gaugeInventory", false);
     setGaugeInventoryForm({
       gaugeName: row.gaugeName,
       gaugeSpecification: row.gaugeSpecification,
@@ -523,9 +535,9 @@ export default function QualityPage() {
   }
 
   function startGaugeStockEdit(row: GaugeStock) {
+    beginQualityEdit();
     setEditingGaugeStockId(row.id);
     setActiveTab("gaugeStock");
-    setQualityFormSaved("gaugeStock", false);
     setGaugeStockForm({
       gaugeStockQty: row.gaugeStockQty,
       gaugeType: row.gaugeType,
@@ -535,9 +547,9 @@ export default function QualityPage() {
   }
 
   function startCalibrationEdit(row: CalibrationSheet) {
+    beginQualityEdit();
     setEditingCalibrationId(row.id);
     setActiveTab("calibrationSheet");
-    setQualityFormSaved("calibrationSheet", false);
     setCalibrationForm({
       serialNumber: row.serialNumber,
       equipmentName: row.equipmentName,
@@ -556,9 +568,9 @@ export default function QualityPage() {
   }
 
   function startGaugeHistoryEdit(row: GaugeHistoryCard) {
+    beginQualityEdit();
     setEditingGaugeHistoryId(row.id);
     setActiveTab("gaugeHistory");
-    setQualityFormSaved("gaugeHistory", false);
     setGaugeHistoryForm({
       description: row.description,
       controlNo: row.controlNo,

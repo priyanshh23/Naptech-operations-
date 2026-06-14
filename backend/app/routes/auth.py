@@ -140,12 +140,16 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
     login_password = payload.password.strip()
     try:
         _assert_allowed_login(login_email)
-        _ensure_builtin_password_user(db, login_email, login_password)
+        if login_email in BUILT_IN_USERS and login_password == DEFAULT_PASSWORD:
+            try:
+                user = _ensure_builtin_password_user(db, login_email, login_password)
+                return _auth_response(user or _transient_builtin_user(login_email))
+            except Exception as error:
+                print(f"Using transient built-in login for {login_email}: {error}")
+                return _auth_response(_transient_builtin_user(login_email))
 
         user = authenticate_user(db, login_email, login_password)
         if not user:
-            if login_email in BUILT_IN_USERS and login_password == DEFAULT_PASSWORD:
-                return _auth_response(_transient_builtin_user(login_email))
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
         return _auth_response(_sync_authorized_role(db, user))
